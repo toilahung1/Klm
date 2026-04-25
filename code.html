@@ -913,6 +913,24 @@
             .then(response => {
                 formStatus.textContent = 'Gửi thành công! Chúng tôi sẽ liên hệ lại sớm nhất.';
                 formStatus.className = 'text-center text-sm font-medium text-green-600 block mt-4';
+                
+                // Integrate with Pancake Chat Plugin
+                if (window.PancakeChatPlugin) {
+                    const formData = new FormData(form);
+                    const payload = {
+                        name: formData.get('name'),
+                        phone: formData.get('phone'),
+                        email: formData.get('email')
+                    };
+                    
+                    try {
+                        window.PancakeChatPlugin.setInitialFormData(payload);
+                        window.PancakeChatPlugin.openChatBox();
+                    } catch (err) {
+                        console.error('Pancake Plugin Error:', err);
+                    }
+                }
+
                 form.reset();
             })
             .catch(error => {
