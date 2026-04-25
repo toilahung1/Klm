@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+
+<html class="light" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Klook Media - Truyền Thông &amp; Sản Xuất Sự Kiện Sáng Tạo</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-container": "#394c84",
+                        "inverse-on-surface": "#f0f1f3",
+                        "on-tertiary-fixed": "#360f00",
+                        "surface-container": "#edeef0",
+                        "on-tertiary": "#ffffff",
+                        "surface-tint": "#0053db",
+                        "tertiary-fixed": "#ffdbcd",
+                        "tertiary-container": "#bc4800",
+                        "on-background": "#191c1e",
+                        "surface-bright": "#f8f9fb",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#00174b",
+                        "error-container": "#ffdad6",
+                        "background": "#f8f9fb",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "tertiary": "#943700",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#b4c5ff",
+                        "secondary-fixed-dim": "#b4c5ff",
+                        "primary-fixed": "#dbe1ff",
+                        "on-secondary": "#ffffff",
+                        "primary": "#004ac6",
+                        "on-surface": "#191c1e",
+                        "surface-dim": "#d9dadc",
+                        "surface-container-high": "#e7e8ea",
+                        "outline-variant": "#c3c6d7",
+                        "on-tertiary-container": "#ffede6",
+                        "secondary-container": "#acbfff",
+                        "outline": "#737686",
+                        "secondary-fixed": "#dbe1ff",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-secondary-fixed-variant": "#31447b",
+                        "inverse-surface": "#2e3132",
+                        "on-surface-variant": "#434655",
+                        "surface-container-highest": "#e1e2e4",
+                        "secondary": "#495c95",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "surface": "#f8f9fb",
+                        "surface-variant": "#e1e2e4",
+                        "on-primary-container": "#eeefff",
+                        "primary-container": "#2563eb",
+                        "error": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "surface-container-low": "#f2f4f6",
+                        "on-primary-fixed": "#00174b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1.5rem",
+                        "lg": "1.5rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
+
+        :root {
+            --primary: #004ac6;
+            --primary-glow: rgba(0, 74, 198, 0.3);
+            --secondary: #495c95;
+            --surface: #f8f9fb;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        body { 
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+        }
+        
+        h1, h2, h3, .brand-font { font-family: 'Manrope', sans-serif; }
+
+        /* Premium Glassmorphism */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px) saturate(180%);
+            -webkit-backdrop-filter: blur(12px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Hero Gradient & Animations */
+        .hero-gradient {
+            background: linear-gradient(135deg, #004ac6 0%, #2563eb 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-gradient::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: rotate 10s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Floating Animation */
+        .floating {
+            animation: floating 3s ease-in-out infinite;
+        }
+
+        @keyframes floating {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+
+        /* Shimmer Effect for Buttons */
+        .shimmer-btn {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .shimmer-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                120deg,
+                transparent,
+                rgba(255, 255, 255, 0.3),
+                transparent
+            );
+            transition: all 0.6s;
+        }
+
+        .shimmer-btn:hover::before {
+            left: 100%;
+        }
+
+        /* Reveal on Scroll */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Modern Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--surface);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+        }
+
+        /* Card Hover Effects */
+        .hover-lift {
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .hover-lift:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+        }
+
+        /* Text Gradient Animation */
+        .text-gradient {
+            background: linear-gradient(to right, #004ac6, #2563eb, #004ac6);
+            background-size: 200% auto;
+            color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            animation: gradient-text 4s linear infinite;
+        }
+
+        @keyframes gradient-text {
+            to { background-position: 200% center; }
+        }
+
+        /* Custom Shapes for Background */
+        .blob {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: var(--primary-glow);
+            filter: blur(80px);
+            border-radius: 50%;
+            z-index: -1;
+            animation: blob-move 20s infinite alternate;
+        }
+
+        @keyframes blob-move {
+            from { transform: translate(0, 0) scale(1); }
+            to { transform: translate(100px, 50px) scale(1.1); }
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: white;
+            width: 100%;
+            max-width: 800px;
+            max-height: 85vh;
+            border-radius: 2rem;
+            position: relative;
+            overflow-y: auto;
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .close-modal {
+            position: sticky;
+            top: 20px;
+            right: 20px;
+            float: right;
+            width: 40px;
+            height: 40px;
+            background: #f1f5f9;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+
+        .close-modal:hover {
+            background: #e2e8f0;
+            transform: rotate(90deg);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl shadow-sm shadow-blue-900/5">
+<div class="max-w-7xl mx-auto px-8 py-4 flex justify-between items-center">
+<span class="text-xl font-bold tracking-tighter text-primary">KLOOK MEDIA</span>
+<div class="hidden md:flex gap-8 items-center">
+<a class="text-slate-600 hover:text-primary font-['Manrope'] font-medium text-sm tracking-tight transition-all duration-300" href="#dich-vu">Dịch Vụ</a>
+<a class="text-slate-600 hover:text-primary font-['Manrope'] font-medium text-sm tracking-tight transition-all duration-300" href="#quy-trinh">Quy Trình</a>
+<a class="text-slate-600 hover:text-primary font-['Manrope'] font-medium text-sm tracking-tight transition-all duration-300" href="#du-an">Dự Án</a>
+<a class="text-slate-600 hover:text-primary font-['Manrope'] font-medium text-sm tracking-tight transition-all duration-300" href="#tu-van">Tư Vấn</a>
+<a class="bg-primary text-on-primary px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-transform scale-95 active:scale-90" href="#tu-van">Liên Hệ Ngay</a>
+</div>
+</div>
+</nav>
+<!-- Section 1: Hero -->
+<header class="relative min-h-screen flex items-center pt-24 pb-20 overflow-hidden bg-surface-bright">
+    <div class="blob -top-24 -left-24"></div>
+    <div class="blob bottom-0 right-0" style="animation-delay: -5s;"></div>
+    <div class="max-w-7xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <div class="z-10 reveal">
+            <span class="inline-block px-4 py-1.5 mb-6 text-xs font-bold tracking-widest uppercase bg-primary/10 text-primary rounded-full">Creative Agency & Production House</span>
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1] text-on-surface">
+                Kiến Tạo Giải Pháp <span class="text-gradient">Truyền Thông</span> Đột Phá
+            </h1>
+            <p class="text-lg text-on-surface-variant leading-relaxed mb-10 max-w-lg">
+                Chúng tôi kể câu chuyện thương hiệu của bạn bằng ngôn ngữ hình ảnh sáng tạo và chiến lược truyền thông đa nền tảng hiện đại nhất.
+            </p>
+            <div class="flex gap-4">
+                <a class="hero-gradient shimmer-btn text-on-primary px-10 py-4 rounded-full font-bold text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-transform" href="#tu-van">Nhận tư vấn</a>
+                <a class="bg-surface-container-lowest text-primary px-10 py-4 rounded-full font-bold text-lg hover:bg-surface-container-low transition-colors border border-primary/20" href="#du-an">Xem dự án</a>
+            </div>
+        </div>
+        <div class="relative reveal" style="transition-delay: 0.2s;">
+            <div class="rounded-lg overflow-hidden aspect-[4/5] shadow-2xl relative z-10 floating">
+                <img alt="Vietnamese professional film production crew on set in a modern studio environment" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAA-1-9MGn18oj2DcrSdr6rYiZkw168tM2cOqajJUGhs1si2sMWx69rn7WAFMxluC-RgzxBiu9IGWs9Tjdjn5L5e-mh7knDjkvRLy77R0t9bsX5O0ONeE0dSSSOWQBg-spw80XMyThEArdk-gGOD84mE6K4-A9jIr6nfroYf4lpUgNFRHsiTcY7viyjdDopvO4m7dScAcXx1x3iIGHeSoSK602MxHPZf1WJwBf1Ws_6_aRgGrUKIYEd4NQEcGfjAhGgoEcag1wp6fE"/>
+            </div>
+            <div class="absolute -bottom-10 -left-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl -z-0"></div>
+            <div class="absolute -top-10 -right-10 w-64 h-64 bg-secondary-container/30 rounded-full blur-3xl -z-0"></div>
+        </div>
+    </div>
+</header>
+<!-- Section 2: Trusted Partners -->
+<section class="py-16 bg-surface-container-low">
+<div class="max-w-7xl mx-auto px-8">
+<p class="text-center text-sm font-semibold text-outline mb-10 uppercase tracking-[0.2em]">Đối tác tin cậy của 100+ thương hiệu Việt</p>
+<div class="flex flex-wrap justify-center items-center gap-12 md:gap-24 opacity-60 grayscale hover:grayscale-0 transition-all">
+<span class="text-xl font-bold text-outline">VINAMILK</span>
+<span class="text-xl font-bold text-outline">VIETTEL</span>
+<span class="text-xl font-bold text-outline">TECHCOMBANK</span>
+<span class="text-xl font-bold text-outline">VNG CORP</span>
+<span class="text-xl font-bold text-outline">BIPHARM</span>
+</div>
+</div>
+</section>
+<!-- Section 3: About Klook Media -->
+<section class="py-32 bg-surface-container-lowest" id="about">
+<div class="max-w-7xl mx-auto px-8 grid grid-cols-1 md:grid-cols-2 gap-24 items-center">
+<div class="relative">
+<div class="rounded-lg overflow-hidden h-[600px] shadow-lg">
+<img alt="Professional networking event in Ho Chi Minh City with Vietnamese business leaders" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB9iFGdgfICmn65fo321OMFQpEISD-W2KHJRyuGRpBgHG0XXAwLNFy4ehsqgSqx-3DaTJgwAAIyGCYpGLH2NC2dUqpFENX8LF4Hn_phltXV9z_rrv7_BypexNUrkDrInKg83xpEf14E4YTxQHifFdmso1cIGRru0-IwjZkizqFZEv9PadUzwVRiR-zUuAVo0Y6lOkeEWbwH_1EyqV57uf2g8KLwRucmk84vJY_5y2qT3i-O7Z4WhifwuLWTjMNrC2KJo4oKdGBDtWk"/>
+</div>
+<div class="absolute -bottom-8 -right-8 glass-card p-8 rounded-lg shadow-xl max-w-xs">
+<p class="text-primary font-bold text-4xl mb-1">500+</p>
+<p class="text-on-surface-variant text-sm font-medium">Chiến dịch truyền thông thành công</p>
+</div>
+</div>
+<div>
+<h2 class="text-4xl font-bold mb-8 leading-tight">Nơi Câu Chuyện Thương Hiệu Trở Nên Sống Động</h2>
+<p class="text-on-surface-variant leading-relaxed text-lg mb-6">
+                Tại Klook Media, chúng tôi không chỉ sản xuất nội dung, chúng tôi tạo ra những trải nghiệm cảm xúc chạm đến trái tim khách hàng. Với đội ngũ trẻ, sáng tạo và am hiểu thị trường Việt Nam, chúng tôi tự tin đồng hành cùng doanh nghiệp bứt phá.
+            </p>
+<p class="text-on-surface-variant leading-relaxed text-lg mb-8">
+                Tầm nhìn của chúng tôi là trở thành Agency dẫn đầu trong việc ứng dụng công nghệ hình ảnh hiện đại vào chiến lược marketing thực chiến.
+            </p>
+<ul class="space-y-4">
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="check_circle" data-weight="fill">check_circle</span>
+<span class="font-medium">Ekip sản xuất chuyên nghiệp, thiết bị hiện đại</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="check_circle" data-weight="fill">check_circle</span>
+<span class="font-medium">Tư vấn chiến lược marketing cá nhân hóa</span>
+</li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary" data-icon="check_circle" data-weight="fill">check_circle</span>
+<span class="font-medium">Đảm bảo KPI và hiệu quả truyền thông rõ ràng</span>
+</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- Section 4: Lợi ích / Giá trị đặc quyền (Dịch Vụ) -->
+<section class="py-32 bg-surface-container-low" id="dich-vu">
+<div class="max-w-7xl mx-auto px-8">
+<div class="text-center mb-20">
+<h2 class="text-4xl font-bold mb-4">Giải Pháp Toàn Diện</h2>
+<p class="text-on-surface-variant text-lg">Chúng tôi cung cấp hệ sinh thái dịch vụ truyền thông khép kín.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+<div class="bg-surface-container-lowest p-10 rounded-lg shadow-sm hover-lift reveal">
+<div class="w-14 h-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-8">
+<span class="material-symbols-outlined text-3xl" data-icon="videocam">videocam</span>
+</div>
+<h3 class="text-xl font-bold mb-4">Sản Xuất Video</h3>
+<p class="text-on-surface-variant leading-relaxed">Phim doanh nghiệp, TVC, viral clip chất lượng cao với góc nhìn điện ảnh độc đáo.</p>
+</div>
+<div class="bg-surface-container-lowest p-10 rounded-lg shadow-sm hover-lift reveal">
+<div class="w-14 h-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-8">
+<span class="material-symbols-outlined text-3xl" data-icon="event_available">event_available</span>
+</div>
+<h3 class="text-xl font-bold mb-4">Tổ Chức Sự Kiện</h3>
+<p class="text-on-surface-variant leading-relaxed">Lên ý tưởng, thiết kế và vận hành sự kiện trọn gói mang đậm dấu ấn thương hiệu.</p>
+</div>
+<div class="bg-surface-container-lowest p-10 rounded-lg shadow-sm hover-lift reveal">
+<div class="w-14 h-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-8">
+<span class="material-symbols-outlined text-3xl" data-icon="branding_watermark">branding_watermark</span>
+</div>
+<h3 class="text-xl font-bold mb-4">Brand Identity</h3>
+<p class="text-on-surface-variant leading-relaxed">Thiết kế bộ nhận diện thương hiệu chuyên nghiệp, định vị phong cách khác biệt.</p>
+</div>
+<div class="bg-surface-container-lowest p-10 rounded-lg shadow-sm hover-lift reveal">
+<div class="w-14 h-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-8">
+<span class="material-symbols-outlined text-3xl" data-icon="ads_click">ads_click</span>
+</div>
+<h3 class="text-xl font-bold mb-4">Digital Marketing</h3>
+<p class="text-on-surface-variant leading-relaxed">Triển khai chiến dịch quảng cáo đa kênh: Facebook, TikTok, YouTube tối ưu chuyển đổi.</p>
+</div>
+<div class="bg-surface-container-lowest p-10 rounded-lg shadow-sm hover-lift reveal">
+<div class="w-14 h-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-8">
+<span class="material-symbols-outlined text-3xl" data-icon="settings_input_antenna">settings_input_antenna</span>
+</div>
+<h3 class="text-xl font-bold mb-4">Livestream Chuyên Nghiệp</h3>
+<p class="text-on-surface-variant leading-relaxed">Dịch vụ livestream sự kiện, talkshow với hệ thống âm thanh, ánh sáng tiêu chuẩn studio.</p>
+</div>
+<div class="bg-surface-container-lowest p-10 rounded-lg shadow-sm hover-lift reveal">
+<div class="w-14 h-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-8">
+<span class="material-symbols-outlined text-3xl" data-icon="groups">groups</span>
+</div>
+<h3 class="text-xl font-bold mb-4">Booking Influencer</h3>
+<p class="text-on-surface-variant leading-relaxed">Kết nối thương hiệu với các KOLs/KOCs phù hợp, nâng tầm uy tín và độ phủ sóng.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 5: Dịch Vụ Chiến Lược (Replaced 'Tại sao bạn nên tham gia') -->
+<section class="py-32 bg-surface-container-lowest" id="dich-vu-chien-luoc">
+<div class="max-w-7xl mx-auto px-8">
+<div class="text-center mb-20">
+<h2 class="text-4xl font-bold mb-4">Dịch Vụ Chiến Lược</h2>
+<p class="text-on-surface-variant text-lg">Những giải pháp mũi nhọn làm nên tên tuổi của Klook Media.</p>
+</div>
+<div class="space-y-16">
+<!-- Value Prop 1 -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+<div class="rounded-lg overflow-hidden shadow-2xl h-[400px]">
+<img alt="Vietnamese corporate film production in a high-tech office setting in Hanoi" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDh09Yx1yeNJ3hIUUskKSE5_nrvcRG0ctCiaTcaE9QJMRuqiGbwKhnOMdNYrWSFNgmwsLsN1iQxn60tPpzd4FfxkYULap7oNTDHzgAKu-Nz62Q695dsh5lOTyCUCOXryThTaIx9LrYmmhhuxP5y_g1GbVKbN6AI0R_HceeBkTILo12UG8ecfpIyyAC1ofZ-71fE4eUE0pSGunC4p2flVfRveijhcDOAUcr6gK18uj1GQ9HUDlGQgQUP9nnMRE47uL_pQHEVlSRnwfs"/>
+</div>
+<div class="lg:pl-12">
+<div class="w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-4xl" data-icon="movie">movie</span>
+</div>
+<h3 class="text-3xl font-bold mb-6 text-on-surface">1. Sản Xuất Phim Doanh Nghiệp</h3>
+<p class="text-on-surface-variant text-lg leading-relaxed mb-6">
+                        Không chỉ dừng lại ở việc giới thiệu, chúng tôi khắc họa khát vọng và quy mô của doanh nghiệp thông qua những thước phim đậm chất điện ảnh, giúp nâng tầm vị thế thương hiệu trên thị trường.
+                    </p>
+<ul class="space-y-4 text-on-surface font-medium">
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="star">star</span>
+                            Kịch bản sáng tạo, khai thác góc nhìn mới lạ
+                        </li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="star">star</span>
+                            Hậu kỳ chuyên nghiệp với kỹ thuật VFX/3D hiện đại
+                        </li>
+</ul>
+</div>
+</div>
+<!-- Value Prop 2 -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+<div class="lg:order-2 rounded-lg overflow-hidden shadow-2xl h-[400px]">
+<img alt="Large scale outdoor music festival event organized in Ho Chi Minh City" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdg4PVrQJDJN_CdtrjBwkdLXd-tThu_5OsYHe1CFaonM74rpG-p02dG3OqkJJsZre-pt6l_1aue_4EdgcBA9wSQJHwZqOkqoIsz8P8-KGAR5BQkZNCjW6eQKA_5qeaFNAPKpXomfBBG8n-tAKMmgyGVL_hoxFDjd-ysYBaG0Rj-Kv31pMmAt31o-kQnzNPxF7TWNNA1Kqt6j-4iQDXCmMtfbojBrfhW_FNX7d1atJFE1Dzraof2x8lsDl9swhi34mSZYa86vpxqzE"/>
+</div>
+<div class="lg:pr-12 lg:order-1">
+<div class="w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-4xl" data-icon="stadium">stadium</span>
+</div>
+<h3 class="text-3xl font-bold mb-6 text-on-surface">2. Tổ Chức Sự Kiện Trọn Gói</h3>
+<p class="text-on-surface-variant text-lg leading-relaxed mb-6">
+                        Từ lễ khai trương, kỷ niệm đến các chương trình âm nhạc quy mô lớn, Klook Media lo liệu mọi khâu từ concept, kỹ thuật âm thanh ánh sáng đến quản trị rủi ro tại hiện trường.
+                    </p>
+<ul class="space-y-4 text-on-surface font-medium">
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="lightbulb">lightbulb</span>
+                            Concept độc bản, mang đậm tính nghệ thuật
+                        </li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="lightbulb">lightbulb</span>
+                            Vận hành chuyên nghiệp với đội ngũ Event Manager giàu kinh nghiệm
+                        </li>
+</ul>
+</div>
+</div>
+<!-- Value Prop 3 -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+<div class="rounded-lg overflow-hidden shadow-2xl h-[400px]">
+<img alt="Social media marketing team in Vietnam analyzing digital data on multiple screens" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC8BYVJIjrViUuttpn9uZrI0fQzG74EhdHvQVbc73udiEqIQiaqkqRiaMSBKaMH3Qy4cuukg6k9du9b8hLqFV2KMG0xcJAjke3IFGNSXu082A4yh1d3CLyLrGq_0zYxXK8tBJA8TUKKLSHRbsQqOLdWTglDYcH4Kd48BbnScO080duPjDKBFDrJ_i8uZvBzmiZRwH3MJpTD03G6EjCyOvEOZ9SzHTSki9xBUzqB-f3kwPLkuFgCAjsViEGDdMoeWcpxh8W8sCXQJis"/>
+</div>
+<div class="lg:pl-12">
+<div class="w-16 h-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-4xl" data-icon="trending_up">trending_up</span>
+</div>
+<h3 class="text-3xl font-bold mb-6 text-on-surface">3. Quản Trị Thương Hiệu &amp; Digital</h3>
+<p class="text-on-surface-variant text-lg leading-relaxed mb-6">
+                        Xây dựng sự hiện diện mạnh mẽ trên không gian số. Chúng tôi giúp doanh nghiệp kết nối đúng đối tượng khách hàng mục tiêu thông qua các chiến dịch marketing dựa trên dữ liệu thực tế.
+                    </p>
+<ul class="space-y-4 text-on-surface font-medium">
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="handshake">handshake</span>
+                            Content Marketing sáng tạo theo xu hướng (Viral Content)
+                        </li>
+<li class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="handshake">handshake</span>
+                            Tối ưu hóa ngân sách quảng cáo, cam kết hiệu quả
+                        </li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 6: Quy Trình Làm Việc (Replaced Agenda) -->
+<section class="py-32 bg-surface-container-low" id="quy-trinh">
+<div class="max-w-4xl mx-auto px-8">
+<div class="text-center mb-20">
+<h2 class="text-4xl font-bold mb-4">Quy Trình Hợp Tác</h2>
+<p class="text-on-surface-variant text-lg">Lộ trình 4 bước để biến ý tưởng thành hiện thực.</p>
+</div>
+<div class="space-y-12">
+<div class="flex gap-8 group">
+<div class="flex flex-col items-center">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold shadow-lg shadow-primary/20">1</div>
+<div class="w-0.5 h-full bg-outline-variant mt-2 group-last:hidden"></div>
+</div>
+<div class="pb-12">
+<h4 class="text-xl font-bold mb-2">Tiếp nhận &amp; Nghiên cứu</h4>
+<p class="text-on-surface-variant">Klook lắng nghe yêu cầu, tìm hiểu cốt lõi thương hiệu và nghiên cứu thị trường để tìm ra "điểm chạm" khách hàng.</p>
+</div>
+</div>
+<div class="flex gap-8 group">
+<div class="flex flex-col items-center">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold shadow-lg shadow-primary/20">2</div>
+<div class="w-0.5 h-full bg-outline-variant mt-2 group-last:hidden"></div>
+</div>
+<div class="pb-12">
+<h4 class="text-xl font-bold mb-2">Sáng tạo Concept</h4>
+<p class="text-on-surface-variant">Phòng ý tưởng đề xuất các giải pháp sáng tạo, kịch bản chi tiết và phương án triển khai tối ưu ngân sách.</p>
+</div>
+</div>
+<div class="flex gap-8 group">
+<div class="flex flex-col items-center">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold shadow-lg shadow-primary/20">3</div>
+<div class="w-0.5 h-full bg-outline-variant mt-2 group-last:hidden"></div>
+</div>
+<div class="pb-12">
+<h4 class="text-xl font-bold mb-2">Sản xuất &amp; Triển khai</h4>
+<p class="text-on-surface-variant">Tiến hành quay phim, dàn dựng sự kiện hoặc triển khai quảng cáo theo đúng timeline đã cam kết.</p>
+</div>
+</div>
+<div class="flex gap-8 group">
+<div class="flex flex-col items-center">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold shadow-lg shadow-primary/20">4</div>
+<div class="w-0.5 h-full bg-outline-variant mt-2 group-last:hidden"></div>
+</div>
+<div class="pb-12">
+<h4 class="text-xl font-bold mb-2">Bàn giao &amp; Đo lường</h4>
+<p class="text-on-surface-variant">Hoàn thiện sản phẩm cuối cùng, theo dõi hiệu quả và báo cáo kết quả chi tiết cho doanh nghiệp.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 7: Dự Án Tiêu Biểu (Replaced Gallery) -->
+<section class="py-32 bg-surface-container-lowest overflow-hidden" id="du-an">
+<div class="max-w-7xl mx-auto px-8">
+<div class="text-center mb-20">
+<h2 class="text-4xl font-bold mb-4">Dự Án Tiêu Biểu</h2>
+<p class="text-on-surface-variant text-lg">Khám phá những dự án sáng tạo mà chúng tôi tự hào thực hiện.</p>
+</div>
+<div class="grid grid-cols-12 gap-6 h-auto md:h-[700px]">
+<div class="col-span-12 md:col-span-8 rounded-lg overflow-hidden shadow-lg group relative">
+<img alt="Large scale business award ceremony stage in Vietnam" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdjko5LFb1ni-AEUJIAWyPvAUXaYgb7QWv9U7sedfRcDEZ-Jojwj-nO_wDYBZUTE0KEnQPBtNpR9oR6UXgiwmJKWi1PvQDNYBws1OtGijK1BHnbkdZzUJDXAk8bGUjW30YLNDq5QxVVYRPhHUKky9mnMCo0d9lAEHkK8B8eSEkHUl_cTamwMVI2jXNzSKUue9oFgSNJQShe4RVc64MH9FOiSciUJ5u47rHt9flkcHKHPTVioB_F36G_p9G8HET2do5hPyod2QHKeE"/>
+<div class="absolute bottom-0 left-0 w-full p-8 bg-gradient-to-t from-black/80 to-transparent text-white">
+<p class="text-sm font-bold text-primary mb-2">EVENT PRODUCTION</p>
+<h4 class="text-2xl font-bold">Lễ kỷ niệm 25 năm thành lập Techcombank</h4>
+</div>
+</div>
+<div class="col-span-12 md:col-span-4 rounded-lg overflow-hidden shadow-lg group relative">
+<img alt="Filming a television commercial in a professional Vietnamese studio" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1Hqot5j-muEW4Cx7ovifu1qdvaQ4fhC1Rant4jsIQFOK_AlxaSCbpw0UTzTSwPlE4NRjUx5ek2-9yFR6ivVi3SEmpg18XSLduVyADDI3YrrcXaqpOQDLpb5fzX5rzHvDaUSUhJFPvwzVyEp4uVPyKZrfmXIjVayjmf6w0Ry9gANvEQ1pljUpGKBJqoyabK7cbS7ZVFkg7s3ElVf29jT4gti80unQ9xtqtRtjdovfXq7CzFPmOSYF4i-yyPaWbwmqFHeAwhhp17xA"/>
+<div class="absolute bottom-0 left-0 w-full p-8 bg-gradient-to-t from-black/80 to-transparent text-white">
+<p class="text-sm font-bold text-primary mb-2">FILM PRODUCTION</p>
+<h4 class="text-xl font-bold">Viral TVC: Vinamilk Tết 2024</h4>
+</div>
+</div>
+<div class="col-span-12 md:col-span-4 rounded-lg overflow-hidden shadow-lg group relative">
+<img alt="Social media content creation session with Vietnamese influencers" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRuQIDq87ADrAnIhorNHbLkvsfxN5VrRDVMnbB5rJDau42Y4NASZri8IagtewaUCNyKgau-o7uG3LWrtJ8cgxotR31vUdgJtiiTKvYEDB5CLtNce2i0xWPcPsMquYeoTET3d1EIMMxh0JD1i8FK_gPz9Ew8l_YkcNVFzUF-4wxlafJd2gdlKmoKuDTiL0RYI9vt3JqbynYa4eVb5ZTHuXemp0q8TJvqzb88ILONB1_gMWKKfexe619bDkn2JuakvM8RqwB7gXp3u4"/>
+<div class="absolute bottom-0 left-0 w-full p-8 bg-gradient-to-t from-black/80 to-transparent text-white">
+<p class="text-sm font-bold text-primary mb-2">DIGITAL CAMPAIGN</p>
+<h4 class="text-xl font-bold">Chiến dịch Influencer Marketing: GrabFood</h4>
+</div>
+</div>
+<div class="col-span-12 md:col-span-8 rounded-lg overflow-hidden shadow-lg group relative">
+<img alt="Elegant gala dinner setup in a luxury hotel in Ho Chi Minh City" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQk4iotzHdTX0-4FH-EjiY3R_y6HfNVMQ5cq5ORSdLM88PawSJ6QrMhN4ohiccGZkvli46AnpB7-leVjNXNxpu9iuKDCexLyTa4jL8Rit_KgMevXpKHr0sNvlC-pvVFpM4SZtyM0bW_dr4THFQaihEvLzYcLKRSEXw-1dm6NRkxTuq-3SZIwSZBWg25jZrpcolqe8FBn-NjG2X_3qK5d_l1zzKMnBguaFVL0mSMOVyDORaU6CZ4y7xh_MgTpNU5wehe4STF6YUmCA"/>
+<div class="absolute bottom-0 left-0 w-full p-8 bg-gradient-to-t from-black/80 to-transparent text-white">
+<p class="text-sm font-bold text-primary mb-2">BRAND EXPERIENCE</p>
+<h4 class="text-2xl font-bold">Ra mắt dòng sản phẩm cao cấp BIPHARM</h4>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 8: Ý kiến khách hàng -->
+<section class="py-32 bg-surface-container-low">
+<div class="max-w-7xl mx-auto px-8">
+<div class="text-center mb-20">
+<h2 class="text-4xl font-bold mb-4">Khách Hàng Nói Gì?</h2>
+<p class="text-on-surface-variant text-lg">Sự hài lòng của đối tác là thước đo thành công lớn nhất của chúng tôi.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Testimonial 1 -->
+<div class="bg-surface-container-lowest p-10 rounded-lg shadow-sm">
+<div class="flex gap-1 text-primary mb-6">
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill">star</span>
+</div>
+<p class="text-on-surface font-medium leading-relaxed mb-8 italic">"Klook Media thực sự hiểu được văn hóa doanh nghiệp của chúng tôi. Phim kỷ niệm 10 năm đã làm lay động toàn bộ tập thể nhân viên."</p>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden">
+<img alt="Portrait of a Vietnamese male business leader" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnHpRRTXSTvD8Oo7cv7cQm9Xh5BGUGEBV-fqc0NuYGBlcYe6SMltV47tGxoz8eDK3YPCHv17oGgNvhCB0623Sc1LTm7FjTx6TC08P4QYAizv3coOOyy5m3iXIQ0fET43byLWZoCv4amG1qqh9WGerKx1tL6rvvUgbveR2TSGxXEjRuf5UBbgr77Ad343crDrgds4xrzy3A6e-rbGQ6hfoXymdLPXhyqILrelHvkSE1-Hd66llY9NrSqeSVJ2YuOCAwBAXly0u5gBw"/>
+</div>
+<div>
+<p class="font-bold text-sm">Anh Minh Tuấn</p>
+<p class="text-on-surface-variant text-xs">Marketing Director, VNG</p>
+</div>
+</div>
+</div>
+<!-- Testimonial 2 -->
+<div class="bg-surface-container-lowest p-10 rounded-lg shadow-sm">
+<div class="flex gap-1 text-primary mb-6">
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill">star</span>
+</div>
+<p class="text-on-surface font-medium leading-relaxed mb-8 italic">"Sự chỉn chu trong khâu tổ chức sự kiện là điều tôi ấn tượng nhất. Các bạn luôn có phương án dự phòng cho mọi tình huống."</p>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden">
+<img alt="Portrait of a Vietnamese female executive" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAotIyvzn8P74LUHhVsLePXijXwLw04muCdShkv1yswMJbAvjTu54Y-ITMeXl38H9dOoKk-K10QPhjlqEwE7B8sQJa9rkO82Upl0Dm_OTnlrualochE7L5P3Sx-gZqSB-lbs4cVL784XYLkSSd5jkIy-syrK_wrotTC-WfzUjLywoHY2w4HLUwTeob5ZA8FclTVfwUF2YJsEAfD8mIIXsUAvApgymvNTbFBUrwXSBmtEapTk6HZy7Grlplu4yAKLZlxTbkCifJtqv0"/>
+</div>
+<div>
+<p class="font-bold text-sm">Chị Thu Thủy</p>
+<p class="text-on-surface-variant text-xs">CEO, Bloom Agency</p>
+</div>
+</div>
+</div>
+<!-- Testimonial 3 -->
+<div class="bg-surface-container-lowest p-10 rounded-lg shadow-sm">
+<div class="flex gap-1 text-primary mb-6">
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill">star</span>
+<span class="material-symbols-outlined" data-icon="star" data-weight="fill">star</span>
+</div>
+<p class="text-on-surface font-medium leading-relaxed mb-8 italic">"Chiến dịch TikTok do Klook thực hiện đã giúp doanh thu tháng của chúng tôi tăng 30%. Sáng tạo và thực chiến!"</p>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden">
+<img alt="Portrait of a Vietnamese professional man" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaavCvKfbiuWfPNyoZo5JHL4WqutIUIUW0CrflPHI5Yk09ClxNgn_0N5mHjYjW0ySwnsQcR4rmkTHZ1hMfTrupesU6fn8zz5GtG2ssiVyoHpZR7U7QGQleHKoOQiSANctMXh28UAGU4CEwKxUyJ8vKMC9cGfkxALFsNBNCxHCJA7wc0ww62ReuYkRuk-jfcEFnn2tgYUYBdexVz3xPuYkxifyW1XlfDALHfEsJBEBv_4ugwL0kZsrDzKxkgH4VMviaD9jHH0bUjyk"/>
+</div>
+<div>
+<p class="font-bold text-sm">Anh Quốc Cường</p>
+<p class="text-on-surface-variant text-xs">Founder, Cường Food</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 10: Form đăng ký tư vấn -->
+<section class="py-32 bg-surface-container-low" id="tu-van">
+<div class="max-w-7xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-24 items-start">
+<div>
+<h2 class="text-4xl font-bold mb-8">Sẵn Sàng Bùng Nổ Thương Hiệu?</h2>
+<p class="text-on-surface-variant text-lg mb-12">Hãy chia sẻ bài toán của bạn, đội ngũ chuyên gia của Klook Media sẽ liên hệ để tư vấn giải pháp tối ưu nhất hoàn toàn miễn phí.</p>
+<div class="space-y-8">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined" data-icon="call">call</span>
+</div>
+<div>
+<p class="font-bold">Hotline Sáng Tạo</p>
+<p class="text-on-surface-variant">0982 799 044 (Hỗ trợ 24/7)</p>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined" data-icon="mail">mail</span>
+</div>
+<div>
+<p class="font-bold">Email Dự Án</p>
+<p class="text-on-surface-variant">klookmediavn@gmail.com</p>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined" data-icon="location_on">location_on</span>
+</div>
+<div>
+<p class="font-bold">Trụ Sở Văn Phòng</p>
+<p class="text-on-surface-variant">298 đường 2/9 phường Hoà Cường, thành phố Đà Nẵng</p>
+</div>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-12 rounded-lg shadow-xl border border-primary/5">
+<form class="space-y-6" id="contactForm">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-sm font-bold ml-1">Họ và Tên</label>
+<input class="w-full bg-surface-container-highest border-none rounded-full px-6 py-4 focus:ring-2 focus:ring-primary/20 transition-all" name="name" placeholder="Nguyễn Văn A" required="" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="text-sm font-bold ml-1">Số Điện Thoại</label>
+<input class="w-full bg-surface-container-highest border-none rounded-full px-6 py-4 focus:ring-2 focus:ring-primary/20 transition-all" name="phone" placeholder="0901 234 567" required="" type="tel"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-sm font-bold ml-1">Email Công Việc</label>
+<input class="w-full bg-surface-container-highest border-none rounded-full px-6 py-4 focus:ring-2 focus:ring-primary/20 transition-all" name="email" placeholder="email@congty.com" type="email"/>
+</div>
+<div class="space-y-2">
+<label class="text-sm font-bold ml-1">Dịch vụ quan tâm</label>
+<select class="w-full bg-surface-container-highest border-none rounded-full px-6 py-4 focus:ring-2 focus:ring-primary/20 transition-all appearance-none" name="service">
+<option>Sản xuất phim doanh nghiệp</option>
+<option>Tổ chức sự kiện trọn gói</option>
+<option>Quản trị thương hiệu</option>
+<option>Digital Marketing</option>
+<option>Khác</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="text-sm font-bold ml-1">Thông điệp của bạn</label>
+<textarea class="w-full bg-surface-container-highest border-none rounded-2xl px-6 py-4 focus:ring-2 focus:ring-primary/20 transition-all min-h-[120px]" name="message" placeholder="Mô tả ngắn gọn yêu cầu của bạn..."></textarea>
+</div>
+<button class="w-full bg-primary text-on-primary py-5 rounded-full font-bold text-lg shadow-lg shadow-primary/30 hover:opacity-90 transition-opacity mt-4 flex items-center justify-center gap-2" id="submitBtn" type="submit">
+<span>Gửi yêu cầu tư vấn</span>
+<span class="material-symbols-outlined hidden animate-spin" id="loadingIcon">sync</span>
+</button>
+<p class="text-center text-sm font-medium hidden" id="formStatus"></p>
+</form>
+</div>
+</div>
+</section>
+<!-- Section 11: Footer -->
+<footer class="bg-slate-50 w-full py-20">
+<div class="max-w-7xl mx-auto px-8">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+<div class="col-span-1 md:col-span-2">
+<span class="text-2xl font-bold text-primary mb-6 block">KLOOK MEDIA</span>
+<p class="text-slate-500 max-w-sm mb-8 leading-relaxed">Agency truyền thông sáng tạo hàng đầu, chuyên cung cấp giải pháp sản xuất hình ảnh và tổ chức sự kiện đột phá cho doanh nghiệp Việt.</p>
+<div class="flex gap-4">
+<a class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center hover:bg-[#1877f2] hover:text-white transition-colors" href="https://www.facebook.com/share/1BQ3SXt2bV/" target="_blank">
+<svg class="w-5 h-5 fill-current" viewbox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"></path></svg>
+</a>
+<a class="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center hover:bg-[#0068ff] hover:text-white transition-colors" href="https://zalo.me/0982799044" target="_blank">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+</a>
+</div>
+</div>
+<div>
+<h5 class="font-bold mb-6">Liên Kết Nhanh</h5>
+<ul class="space-y-4">
+<li><a class="text-slate-500 hover:text-primary transition-colors" href="#dich-vu">Dịch Vụ</a></li>
+<li><a class="text-slate-500 hover:text-primary transition-colors" href="#du-an">Dự Án Tiêu Biểu</a></li>
+<li><a class="text-slate-500 hover:text-primary transition-colors" href="#quy-trinh">Quy Trình</a></li>
+<li><a class="text-slate-500 hover:text-primary transition-colors" href="#tu-van">Báo Giá</a></li>
+</ul>
+</div>
+<div>
+<h5 class="font-bold mb-6">Chính Sách</h5>
+<ul class="space-y-4">
+<li><a class="text-slate-500 hover:text-primary transition-colors underline decoration-primary/30 underline-offset-4 cursor-pointer" onclick="openModal('modal-terms')">Điều khoản sử dụng</a></li>
+<li><a class="text-slate-500 hover:text-primary transition-colors underline decoration-primary/30 underline-offset-4 cursor-pointer" onclick="openModal('modal-privacy')">Bảo mật thông tin</a></li>
+</ul>
+</div>
+</div>
+<div class="pt-12 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-6">
+<p class="font-['Inter'] text-sm leading-relaxed text-slate-500">© 2024 Klook Media Vietnam. Bảo lưu mọi quyền.</p>
+<div class="flex gap-8">
+<span class="text-slate-500 text-sm">298 đường 2/9, Hòa Cường, Đà Nẵng</span>
+</div>
+</div>
+</div>
+</footer>
+
+    
+    <!-- Modal: Điều khoản sử dụng -->
+    <div id="modal-terms" class="modal-overlay" onclick="closeModal('modal-terms')">
+        <div class="modal-content p-8 md:p-12" onclick="event.stopPropagation()">
+            <div class="close-modal" onclick="closeModal('modal-terms')">
+                <span class="material-symbols-outlined">close</span>
+            </div>
+            <h2 class="text-3xl font-bold mb-8">Điều Khoản Sử Dụng</h2>
+            <div class="prose max-w-none text-on-surface-variant leading-relaxed space-y-6">
+                <section>
+                    <h3 class="text-xl font-bold text-on-surface mb-3">1. Quy định chung</h3>
+                    <p>Chào mừng bạn đến với Klook Media. Khi sử dụng dịch vụ của chúng tôi, bạn đồng ý tuân thủ các điều khoản và điều kiện được nêu dưới đây.</p>
+                </section>
+                <section>
+                    <h3 class="text-xl font-bold text-on-surface mb-3">2. Quyền và nghĩa vụ của khách hàng</h3>
+                    <p>Khách hàng có quyền yêu cầu tư vấn và thực hiện các dịch vụ theo đúng hợp đồng đã ký kết. Khách hàng có trách nhiệm cung cấp thông tin trung thực và thanh toán đầy đủ theo lộ trình.</p>
+                </section>
+                <section>
+                    <h3 class="text-xl font-bold text-on-surface mb-3">3. Sở hữu trí tuệ</h3>
+                    <p>Mọi sản phẩm hình ảnh, video do Klook Media sản xuất sẽ thuộc quyền sở hữu của khách hàng sau khi hoàn tất thanh toán, trừ khi có thỏa thuận khác bằng văn bản.</p>
+                </section>
+                <section>
+                    <h3 class="text-xl font-bold text-on-surface mb-3">4. Giới hạn trách nhiệm</h3>
+                    <p>Klook Media không chịu trách nhiệm cho các chậm trễ do các yếu tố bất khả kháng như thiên tai, dịch bệnh hoặc các sự cố kỹ thuật từ phía bên thứ ba không nằm trong kiểm soát.</p>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Bảo mật thông tin -->
+    <div id="modal-privacy" class="modal-overlay" onclick="closeModal('modal-privacy')">
+        <div class="modal-content p-8 md:p-12" onclick="event.stopPropagation()">
+            <div class="close-modal" onclick="closeModal('modal-privacy')">
+                <span class="material-symbols-outlined">close</span>
+            </div>
+            <h2 class="text-3xl font-bold mb-8">Chính Sách Bảo Mật</h2>
+            <div class="prose max-w-none text-on-surface-variant leading-relaxed space-y-6">
+                <section>
+                    <h3 class="text-xl font-bold text-on-surface mb-3">1. Thu thập thông tin</h3>
+                    <p>Chúng tôi thu thập thông tin như họ tên, số điện thoại, email thông qua form tư vấn để liên hệ và cung cấp giải pháp tốt nhất cho khách hàng.</p>
+                </section>
+                <section>
+                    <h3 class="text-xl font-bold text-on-surface mb-3">2. Sử dụng thông tin</h3>
+                    <p>Thông tin của bạn được sử dụng duy nhất cho mục đích trao đổi công việc, gửi báo giá và thông báo về tiến độ dự án.</p>
+                </section>
+                <section>
+                    <h3 class="text-xl font-bold text-on-surface mb-3">3. Cam kết bảo mật</h3>
+                    <p>Klook Media cam kết không bán, chia sẻ hoặc tiết lộ thông tin cá nhân của khách hàng cho bất kỳ bên thứ ba nào khi chưa có sự đồng ý của khách hàng.</p>
+                </section>
+                <section>
+                    <h3 class="text-xl font-bold text-on-surface mb-3">4. Thay đổi chính sách</h3>
+                    <p>Chúng tôi có quyền cập nhật chính sách này bất kỳ lúc nào để phù hợp với quy định của pháp luật Việt Nam.</p>
+                </section>
+            </div>
+        </div>
+    </div>
+
+
+
+    <script>
+        // Modal Logic
+        function openModal(id) {
+            const modal = document.getElementById(id);
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden'; // Prevent scroll
+            }, 10);
+        }
+
+        function closeModal(id) {
+            const modal = document.getElementById(id);
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto'; // Restore scroll
+            }, 300);
+        }
+
+        // Close on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const activeModal = document.querySelector('.modal-overlay.active');
+                if (activeModal) closeModal(activeModal.id);
+            }
+        });
+
+        // Form Submission to Google Sheets
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbxz2XjiPWYFSkZtwgWwHuwZOrE1d6U64IVgiJdNIlyOm6X3igIzfxVZjppO2AY9Lg6E/exec';
+        const form = document.getElementById('contactForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const loadingIcon = document.getElementById('loadingIcon');
+        const formStatus = document.getElementById('formStatus');
+
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            
+            if (scriptURL === 'YOUR_GOOGLE_SCRIPT_URL_HERE') {
+                alert('Vui lòng cấu hình URL Google Script trong code để gửi form!');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            loadingIcon.classList.remove('hidden');
+            formStatus.classList.add('hidden');
+
+            fetch(scriptURL, { 
+                method: 'POST', 
+                body: new FormData(form)
+            })
+            .then(response => {
+                formStatus.textContent = 'Gửi thành công! Chúng tôi sẽ liên hệ lại sớm nhất.';
+                formStatus.className = 'text-center text-sm font-medium text-green-600 block mt-4';
+                form.reset();
+            })
+            .catch(error => {
+                formStatus.textContent = 'Có lỗi xảy ra, vui lòng thử lại sau.';
+                formStatus.className = 'text-center text-sm font-medium text-red-600 block mt-4';
+                console.error('Error!', error.message);
+            })
+            .finally(() => {
+                submitBtn.disabled = false;
+                loadingIcon.classList.add('hidden');
+            });
+        });
+
+        // Intersection Observer for Reveal Effect
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                    // Once animated, no need to observe anymore
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.reveal').forEach(el => {
+            observer.observe(el);
+        });
+
+        // Add reveal class to other sections for consistency
+        document.querySelectorAll('section > div').forEach(el => {
+            if (!el.classList.contains('reveal')) {
+                el.classList.add('reveal');
+                observer.observe(el);
+            }
+        });
+    </script>
+    <!-- Floating Social Buttons (Positioned above Pancake) -->
+    <div class="fixed bottom-24 right-6 z-[100] flex flex-col gap-3 items-end">
+        <a class="flex items-center justify-center w-12 h-12 bg-[#0068ff] text-white rounded-full shadow-lg hover:scale-110 transition-transform group relative" href="https://zalo.me/0982799044" target="_blank">
+            <span class="absolute right-full mr-3 bg-white text-[#0068ff] px-3 py-1.5 rounded-lg text-sm font-bold shadow-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Zalo: 0982799044</span>
+            <span class="material-symbols-outlined text-2xl">chat</span>
+        </a>
+        <a class="flex items-center justify-center w-12 h-12 bg-[#1877f2] text-white rounded-full shadow-lg hover:scale-110 transition-transform group relative" href="https://www.facebook.com/share/1BQ3SXt2bV/" target="_blank">
+            <span class="absolute right-full mr-3 bg-white text-[#1877f2] px-3 py-1.5 rounded-lg text-sm font-bold shadow-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Facebook</span>
+            <svg class="w-6 h-6 fill-current" viewbox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"></path></svg>
+        </a>
+    </div>
+
+    <script src="https://chat-plugin.pancake.vn/main/auto?page_id=web_klookermedia"></script>
+</body></html>
