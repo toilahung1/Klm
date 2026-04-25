@@ -290,6 +290,16 @@
             background: #e2e8f0;
             transform: rotate(90deg);
         }
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+        }
+        .animate-marquee {
+            animation: marquee 40s linear infinite;
+        }
+        .animate-marquee2 {
+            animation: marquee 40s linear infinite;
+        }
     </style>
 </head>
 <body class="bg-background text-on-surface">
@@ -333,18 +343,33 @@
         </div>
     </div>
 </header>
-<!-- Section 2: Trusted Partners -->
-<section class="py-16 bg-surface-container-low">
-<div class="max-w-7xl mx-auto px-8">
-<p class="text-center text-sm font-semibold text-outline mb-10 uppercase tracking-[0.2em]">Đối tác tin cậy của 100+ thương hiệu Việt</p>
-<div class="flex flex-wrap justify-center items-center gap-12 md:gap-24 opacity-60 grayscale hover:grayscale-0 transition-all">
-<span class="text-xl font-bold text-outline">VINAMILK</span>
-<span class="text-xl font-bold text-outline">VIETTEL</span>
-<span class="text-xl font-bold text-outline">TECHCOMBANK</span>
-<span class="text-xl font-bold text-outline">VNG CORP</span>
-<span class="text-xl font-bold text-outline">BIPHARM</span>
-</div>
-</div>
+<!-- Section 2: Trusted Partners with Infinite Scroll -->
+<section class="py-20 bg-surface-container-low overflow-hidden">
+    <div class="max-w-7xl mx-auto px-8 mb-12">
+        <p class="text-center text-sm font-semibold text-outline uppercase tracking-[0.2em] opacity-80">Đối tác khẳng định đẳng cấp</p>
+    </div>
+    <div class="relative flex overflow-x-hidden">
+        <div class="animate-marquee whitespace-nowrap flex items-center gap-16 md:gap-32 px-4">
+            <span class="text-3xl font-black text-outline/30 tracking-tighter hover:text-primary/50 transition-colors cursor-default select-none">NEXUS</span>
+            <span class="text-3xl font-black text-outline/30 tracking-tighter hover:text-primary/50 transition-colors cursor-default select-none">LUMINA</span>
+            <span class="text-3xl font-black text-outline/30 tracking-tighter hover:text-primary/50 transition-colors cursor-default select-none">VERTEX</span>
+            <span class="text-3xl font-black text-outline/30 tracking-tighter hover:text-primary/50 transition-colors cursor-default select-none">AETHER</span>
+            <span class="text-3xl font-black text-outline/30 tracking-tighter hover:text-primary/50 transition-colors cursor-default select-none">QUANTUM</span>
+            <span class="text-3xl font-black text-outline/30 tracking-tighter hover:text-primary/50 transition-colors cursor-default select-none">VELOCITY</span>
+            <span class="text-3xl font-black text-outline/30 tracking-tighter hover:text-primary/50 transition-colors cursor-default select-none">ORION</span>
+            <span class="text-3xl font-black text-outline/30 tracking-tighter hover:text-primary/50 transition-colors cursor-default select-none">ZENITH</span>
+        </div>
+        <div class="absolute top-0 animate-marquee2 whitespace-nowrap flex items-center gap-16 md:gap-32 px-4 no-select" aria-hidden="true">
+            <span class="text-3xl font-black text-outline/30 tracking-tighter hover:text-primary/50 transition-colors cursor-default select-none">NEXUS</span>
+            <span class="text-3xl font-black text-outline/30 tracking-tighter hover:text-primary/50 transition-colors cursor-default select-none">LUMINA</span>
+            <span class="text-3xl font-black text-outline/30 tracking-tighter hover:text-primary/50 transition-colors cursor-default select-none">VERTEX</span>
+            <span class="text-3xl font-black text-outline/30 tracking-tighter hover:text-primary/50 transition-colors cursor-default select-none">AETHER</span>
+            <span class="text-3xl font-black text-outline/30 tracking-tighter hover:text-primary/50 transition-colors cursor-default select-none">QUANTUM</span>
+            <span class="text-3xl font-black text-outline/30 tracking-tighter hover:text-primary/50 transition-colors cursor-default select-none">VELOCITY</span>
+            <span class="text-3xl font-black text-outline/30 tracking-tighter hover:text-primary/50 transition-colors cursor-default select-none">ORION</span>
+            <span class="text-3xl font-black text-outline/30 tracking-tighter hover:text-primary/50 transition-colors cursor-default select-none">ZENITH</span>
+        </div>
+    </div>
 </section>
 <!-- Section 3: About Klooker Media -->
 <section class="py-32 bg-surface-container-lowest" id="about">
