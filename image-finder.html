@@ -103,7 +103,7 @@
             display: flex;
             flex-direction: column;
             height: 100vh;
-            background: linear-gradient(135deg, #f8f9fb 0%, #edeef0 100%);
+            background: white;
         }
 
         .chat-messages {
@@ -113,6 +113,7 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
+            min-height: 0;
         }
 
         .message {
@@ -258,6 +259,106 @@
         .gsi_outer_content {
             width: 100% !important;
         }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0;
+            flex: 1;
+            min-height: 0;
+            margin-top: 3rem;
+        }
+
+        @media (min-width: 1024px) {
+            .workspace {
+                grid-template-columns: 380px 1fr;
+            }
+        }
+
+        .chat-panel {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            border-right: 1px solid #e1e2e4;
+            background: linear-gradient(180deg, #f8f9fb 0%, #edeef0 100%);
+        }
+
+        .gallery-panel {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            background: white;
+        }
+
+        .gallery-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e1e2e4;
+            background: #f8f9fb;
+        }
+
+        .gallery-grid {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            align-content: start;
+        }
+
+        .gallery-empty {
+            grid-column: 1 / -1;
+            text-align: center;
+            color: #737686;
+            padding: 48px 24px;
+        }
+
+        .gallery-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            background: #f0f0f0;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .gallery-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 74, 198, 0.15);
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .gallery-item-label {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 8px;
+            font-size: 10px;
+            color: white;
+            background: linear-gradient(to top, rgba(0,0,0,0.75), transparent);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .ai-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 9999px;
+            background: rgba(0, 74, 198, 0.1);
+            color: #004ac6;
+            font-size: 11px;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body class="bg-background text-on-surface">
@@ -290,64 +391,114 @@
             <p class="text-center text-sm text-on-surface-variant" id="loadingStatus">
                 Đang tải cấu hình...
             </p>
+            <p class="text-center text-xs text-on-surface-variant">
+                Đăng nhập Gmail → xem ảnh Drive → mô tả để AI Gemini tìm giúp
+            </p>
         </div>
     </div>
 </div>
 
 <!-- Chat Screen -->
 <div id="chatScreen" class="hidden chat-container pt-20">
-    <!-- Header -->
     <div class="bg-white border-b border-surface-container flex items-center justify-between px-6 py-4 fixed top-20 left-0 right-0 z-30">
         <div>
-            <h2 class="text-lg font-bold">AI Image Finder</h2>
+            <div class="flex items-center gap-2">
+                <h2 class="text-lg font-bold">AI Image Finder</h2>
+                <span class="ai-badge"><span class="material-symbols-outlined text-sm">auto_awesome</span> Gemini AI</span>
+            </div>
             <p class="text-sm text-on-surface-variant" id="userEmail"></p>
         </div>
-        <button onclick="logout()" class="text-slate-600 hover:text-primary p-2 rounded-full hover:bg-surface-container-low transition-colors">
+        <button onclick="logout()" class="text-slate-600 hover:text-primary p-2 rounded-full hover:bg-surface-container-low transition-colors" title="Đăng xuất">
             <span class="material-symbols-outlined">logout</span>
         </button>
     </div>
 
-    <!-- Messages Area -->
-    <div class="chat-messages mt-12">
-        <div class="message bot">
-            <div class="message-bubble">
-                👋 Xin chào! Hãy mô tả ảnh bạn muốn tìm, tôi sẽ tìm kiếm trong Google Drive của bạn!
+    <div class="workspace">
+        <div class="chat-panel">
+            <div class="chat-messages">
+                <div class="message bot">
+                    <div class="message-bubble">
+                        👋 Đăng nhập Gmail xong, ảnh Drive sẽ hiện bên phải. Mô tả ảnh bạn cần — AI sẽ tìm giúp!
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-input-area">
+                <form id="chatForm" class="flex gap-3">
+                    <input
+                        type="text"
+                        id="promptInput"
+                        placeholder="VD: ảnh sự kiện tết, team quay phim, logo công ty..."
+                        class="flex-1 bg-surface-container-low border-none rounded-full px-6 py-3 focus:ring-2 focus:ring-primary/20 transition-all"
+                        autocomplete="off"
+                    />
+                    <button
+                        type="submit"
+                        class="bg-primary text-on-primary px-6 py-3 rounded-full hover:opacity-90 transition-opacity flex items-center gap-2 font-semibold"
+                        id="sendBtn"
+                    >
+                        <span class="material-symbols-outlined">send</span>
+                    </button>
+                </form>
             </div>
         </div>
-    </div>
 
-    <!-- Input Area -->
-    <div class="chat-input-area">
-        <form id="chatForm" class="flex gap-3">
-            <input 
-                type="text" 
-                id="promptInput" 
-                placeholder="Nhập từ khóa (vd: 'ảnh hồng', 'ảnh quay cảnh')..." 
-                class="flex-1 bg-surface-container-low border-none rounded-full px-6 py-3 focus:ring-2 focus:ring-primary/20 transition-all"
-                autocomplete="off"
-            />
-            <button 
-                type="submit" 
-                class="bg-primary text-on-primary px-6 py-3 rounded-full hover:opacity-90 transition-opacity flex items-center gap-2 font-semibold"
-                id="sendBtn"
-            >
-                <span class="material-symbols-outlined">send</span>
-            </button>
-        </form>
+        <div class="gallery-panel">
+            <div class="gallery-header">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <h3 class="font-bold text-sm">Thư viện Google Drive</h3>
+                        <p class="text-xs text-on-surface-variant" id="galleryStatus">Chưa tải ảnh</p>
+                    </div>
+                    <button type="button" id="showAllBtn" class="text-xs font-semibold text-primary hover:opacity-80 hidden">
+                        Xem tất cả
+                    </button>
+                </div>
+            </div>
+            <div id="driveGallery" class="gallery-grid">
+                <div class="gallery-empty">Đăng nhập Gmail để xem ảnh trong Drive</div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
-    // Client ID dùng ở frontend (Google OAuth cho web app - không phải secret)
     const GOOGLE_CLIENT_ID = '844249668292-hgk5167darjhn9vsptmr9bfn31dh7d3a.apps.googleusercontent.com';
     const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
     const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email openid profile';
+    const GEMINI_MODEL = 'gemini-2.0-flash';
+    const GEMINI_KEY_STORAGE = 'klooker_gemini_api_key';
 
     let allDriveImages = [];
+    let displayedImages = [];
     let currentUser = null;
     let gapiInited = false;
     let tokenClient = null;
     let isLoadingDrive = false;
+
+    function getGeminiApiKey() {
+        return localStorage.getItem(GEMINI_KEY_STORAGE) || '';
+    }
+
+    function ensureGeminiApiKey() {
+        const existing = getGeminiApiKey();
+        if (existing) return existing;
+
+        const key = window.prompt(
+            'Nhập Gemini API Key (miễn phí, lấy tại aistudio.google.com/apikey).\nChỉ cần nhập 1 lần trên trình duyệt này:'
+        );
+
+        if (!key || !key.trim()) return '';
+        localStorage.setItem(GEMINI_KEY_STORAGE, key.trim());
+        return key.trim();
+    }
+
+    function getThumbnailUrl(image, size = 300) {
+        if (image.thumbnailLink) {
+            return image.thumbnailLink.replace(/=s\d+$/, `=s${size}`);
+        }
+        return `https://drive.google.com/thumbnail?id=${image.id}&sz=w${size}`;
+    }
 
     function normalizeText(text) {
         return (text || '')
@@ -366,29 +517,154 @@
         const parts = name.split(/[\s._\-]+/);
 
         keywords.forEach((keyword) => {
-            if (name.includes(keyword)) {
-                score += 12;
-                return;
-            }
-
-            if (parts.some((part) => part.startsWith(keyword) || keyword.startsWith(part))) {
-                score += 7;
-            }
+            if (name.includes(keyword)) score += 12;
+            else if (parts.some((part) => part.startsWith(keyword) || keyword.startsWith(part))) score += 7;
         });
 
-        if (keywords.every((keyword) => name.includes(keyword))) {
-            score += 25;
-        }
-
+        if (keywords.every((keyword) => name.includes(keyword))) score += 25;
         return score;
     }
 
-    function searchImages(query) {
+    function searchImagesLocal(query) {
         return allDriveImages
             .map((image) => ({ image, score: scoreImage(image, query) }))
             .filter((result) => result.score > 0)
             .sort((a, b) => b.score - a.score || new Date(b.image.createdTime) - new Date(a.image.createdTime))
             .map((result) => result.image);
+    }
+
+    async function searchDriveFullText(query) {
+        const safeQuery = query.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        try {
+            const response = await gapi.client.drive.files.list({
+                q: `trashed=false and mimeType contains 'image/' and fullText contains '${safeQuery}'`,
+                spaces: 'drive',
+                fields: 'files(id,name,mimeType,createdTime,webContentLink,thumbnailLink)',
+                pageSize: 50,
+                orderBy: 'createdTime desc'
+            });
+            return response.result.files || [];
+        } catch (error) {
+            console.warn('Drive fullText search failed:', error);
+            return [];
+        }
+    }
+
+    async function searchWithGemini(query, candidates) {
+        const apiKey = getGeminiApiKey() || ensureGeminiApiKey();
+        if (!apiKey) return null;
+
+        const catalog = candidates.slice(0, 120).map((image) => ({
+            id: image.id,
+            name: image.name,
+            created: image.createdTime
+        }));
+
+        const prompt = `Bạn là trợ lý tìm ảnh trong Google Drive.
+Người dùng hỏi: "${query}"
+
+Danh sách ảnh (JSON):
+${JSON.stringify(catalog)}
+
+Hãy chọn các ảnh phù hợp nhất với mô tả của người dùng (theo tên file, ngữ cảnh, từ khóa tiếng Việt/Anh).
+Trả về JSON thuần dạng: {"ids":["id1","id2"], "summary":"giải thích ngắn bằng tiếng Việt"}
+Giới hạn tối đa 24 id, xếp theo độ liên quan.`;
+
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        temperature: 0.2,
+                        responseMimeType: 'application/json'
+                    }
+                })
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`Gemini API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+        const parsed = JSON.parse(text);
+        const idSet = new Set(parsed.ids || []);
+        const ranked = candidates.filter((image) => idSet.has(image.id));
+
+        return {
+            images: ranked,
+            summary: parsed.summary || `AI đã chọn ${ranked.length} ảnh phù hợp.`
+        };
+    }
+
+    async function searchImagesSmart(query) {
+        const localResults = searchImagesLocal(query);
+        const fullTextResults = await searchDriveFullText(query);
+
+        const merged = new Map();
+        [...localResults, ...fullTextResults].forEach((image) => merged.set(image.id, image));
+        let candidates = Array.from(merged.values());
+
+        if (!candidates.length) {
+            candidates = allDriveImages.slice(0, 120);
+        }
+
+        try {
+            const aiResult = await searchWithGemini(query, candidates.length ? candidates : allDriveImages);
+            if (aiResult && aiResult.images.length) {
+                return { mode: 'ai', ...aiResult };
+            }
+        } catch (error) {
+            console.warn('AI search fallback:', error);
+        }
+
+        const fallback = candidates.length ? candidates : localResults;
+        return {
+            mode: 'local',
+            images: fallback.slice(0, 24),
+            summary: fallback.length
+                ? `Tìm thấy ${fallback.length} ảnh theo tên file và nội dung Drive.`
+                : 'Không tìm thấy ảnh phù hợp.'
+        };
+    }
+
+    function renderGallery(images, statusText) {
+        displayedImages = images;
+        const gallery = document.getElementById('driveGallery');
+        const statusEl = document.getElementById('galleryStatus');
+        const showAllBtn = document.getElementById('showAllBtn');
+
+        statusEl.textContent = statusText;
+        showAllBtn.classList.toggle('hidden', images.length === allDriveImages.length || !allDriveImages.length);
+
+        if (!images.length) {
+            gallery.innerHTML = '<div class="gallery-empty">Không có ảnh để hiển thị</div>';
+            return;
+        }
+
+        gallery.innerHTML = '';
+        images.forEach((image) => {
+            const item = document.createElement('div');
+            item.className = 'gallery-item';
+            item.onclick = () => openImageModal(image);
+
+            const img = document.createElement('img');
+            img.src = getThumbnailUrl(image);
+            img.alt = image.name;
+            img.loading = 'lazy';
+
+            const label = document.createElement('div');
+            label.className = 'gallery-item-label';
+            label.textContent = image.name;
+
+            item.appendChild(img);
+            item.appendChild(label);
+            gallery.appendChild(item);
+        });
     }
 
     function waitForGoogleLibs() {
@@ -517,13 +793,15 @@
 
             removeLastMessage();
 
+            renderGallery(allDriveImages, `${allDriveImages.length} ảnh trong Drive`);
+
             if (allDriveImages.length > 0) {
-                addMessage(`📁 Đã tìm thấy ${allDriveImages.length} ảnh trong Drive của bạn`, 'bot');
+                addMessage(`📁 Đã tải ${allDriveImages.length} ảnh từ Google Drive. Xem gallery bên phải!`, 'bot');
             } else {
-                addMessage('📁 Chưa thấy ảnh nào trong Google Drive. Hãy thử upload ảnh rồi quay lại.', 'bot');
+                addMessage('📁 Chưa thấy ảnh nào trong Google Drive. Hãy upload ảnh rồi quay lại.', 'bot');
             }
 
-            addMessage('💡 Gõ mô tả hoặc từ khóa, ví dụ: "tết", "team", "quay phim", "logo"...', 'bot');
+            addMessage('🤖 Mô tả ảnh bạn cần — AI Gemini sẽ tìm giúp (VD: "ảnh team tết", "poster sự kiện")', 'bot');
         } catch (error) {
             console.error('Error loading Drive images:', error);
             removeLastMessage();
@@ -533,40 +811,42 @@
         }
     }
 
-    // Search images
-    document.getElementById('chatForm').addEventListener('submit', (e) => {
+    document.getElementById('showAllBtn').addEventListener('click', () => {
+        renderGallery(allDriveImages, `${allDriveImages.length} ảnh trong Drive`);
+        addMessage('📂 Đang hiển thị toàn bộ ảnh trong Drive.', 'bot');
+    });
+
+    document.getElementById('chatForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        
-        const prompt = document.getElementById('promptInput').value.trim().toLowerCase();
-        if (!prompt) return;
-        
+
+        const prompt = document.getElementById('promptInput').value.trim();
+        if (!prompt || !allDriveImages.length) return;
+
         addMessage(prompt, 'user');
         document.getElementById('promptInput').value = '';
         document.getElementById('sendBtn').disabled = true;
-        
-        addMessage('🔍 Đang tìm kiếm...', 'bot', true);
-        
-        setTimeout(() => {
-            try {
-                const filteredImages = searchImages(prompt);
 
-                removeLastMessage();
+        addMessage('🤖 AI đang phân tích và tìm ảnh phù hợp...', 'bot', true);
 
-                if (filteredImages.length > 0) {
-                    addImageGallery(filteredImages, prompt);
-                    addMessage(`✅ Tìm thấy ${filteredImages.length} ảnh phù hợp với "${prompt}"`, 'bot');
-                } else {
-                    addMessage(`😕 Không thấy ảnh nào khớp "${prompt}". Thử từ khóa ngắn hơn hoặc tên file trong Drive.`, 'bot');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                removeLastMessage();
-                addMessage('Có lỗi xảy ra khi tìm kiếm.', 'bot');
+        try {
+            const result = await searchImagesSmart(prompt);
+            removeLastMessage();
+
+            renderGallery(result.images, `${result.images.length} ảnh · ${result.mode === 'ai' ? 'AI Gemini' : 'Tìm thông minh'}`);
+
+            if (result.images.length > 0) {
+                addMessage(`✅ ${result.summary}`, 'bot');
+            } else {
+                addMessage(`😕 Không thấy ảnh phù hợp "${prompt}". Thử mô tả khác hoặc bấm "Xem tất cả".`, 'bot');
             }
-            
-            document.getElementById('sendBtn').disabled = false;
-            document.getElementById('promptInput').focus();
-        }, 500);
+        } catch (error) {
+            console.error('Search error:', error);
+            removeLastMessage();
+            addMessage('Có lỗi khi tìm kiếm. Vui lòng thử lại.', 'bot');
+        }
+
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('promptInput').focus();
     });
 
     function addMessage(text, sender = 'bot', isLoading = false) {
@@ -676,16 +956,20 @@
         }
 
         allDriveImages = [];
+        displayedImages = [];
         currentUser = null;
         isLoadingDrive = false;
 
         document.getElementById('chatScreen').classList.add('hidden');
         document.getElementById('loginScreen').style.display = 'flex';
         document.getElementById('loadingStatus').textContent = 'Đăng nhập bằng Gmail để tìm ảnh trong Google Drive của bạn';
+        document.getElementById('galleryStatus').textContent = 'Chưa tải ảnh';
+        document.getElementById('showAllBtn').classList.add('hidden');
+        document.getElementById('driveGallery').innerHTML = '<div class="gallery-empty">Đăng nhập Gmail để xem ảnh trong Drive</div>';
         document.querySelector('.chat-messages').innerHTML = `
             <div class="message bot">
                 <div class="message-bubble">
-                    👋 Xin chào! Hãy mô tả ảnh bạn muốn tìm!
+                    👋 Đăng nhập Gmail xong, ảnh Drive sẽ hiện bên phải. Mô tả ảnh bạn cần — AI sẽ tìm giúp!
                 </div>
             </div>
         `;
