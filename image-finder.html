@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html class="light" lang="vi">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>AI Image Finder - Klooker Media</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script async defer src="https://apis.google.com/js/api.js"></script>
+    <script async defer src="https://accounts.google.com/gsi/client"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-container": "#394c84",
+                        "inverse-on-surface": "#f0f1f3",
+                        "on-tertiary-fixed": "#360f00",
+                        "surface-container": "#edeef0",
+                        "on-tertiary": "#ffffff",
+                        "surface-tint": "#0053db",
+                        "tertiary-fixed": "#ffdbcd",
+                        "tertiary-container": "#bc4800",
+                        "on-background": "#191c1e",
+                        "surface-bright": "#f8f9fb",
+                        "on-error-container": "#93000a",
+                        "on-secondary-fixed": "#00174b",
+                        "error-container": "#ffdad6",
+                        "background": "#f8f9fb",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "tertiary": "#943700",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#b4c5ff",
+                        "secondary-fixed-dim": "#b4c5ff",
+                        "primary-fixed": "#dbe1ff",
+                        "on-secondary": "#ffffff",
+                        "primary": "#004ac6",
+                        "on-surface": "#191c1e",
+                        "surface-dim": "#d9dadc",
+                        "surface-container-high": "#e7e8ea",
+                        "outline-variant": "#c3c6d7",
+                        "on-tertiary-container": "#ffede6",
+                        "secondary-container": "#acbfff",
+                        "outline": "#737686",
+                        "secondary-fixed": "#dbe1ff",
+                        "on-tertiary-fixed-variant": "#7d2d00",
+                        "on-secondary-fixed-variant": "#31447b",
+                        "inverse-surface": "#2e3132",
+                        "on-surface-variant": "#434655",
+                        "surface-container-highest": "#e1e2e4",
+                        "secondary": "#495c95",
+                        "tertiary-fixed-dim": "#ffb596",
+                        "surface": "#f8f9fb",
+                        "surface-variant": "#e1e2e4",
+                        "on-primary-container": "#eeefff",
+                        "primary-container": "#2563eb",
+                        "error": "#ba1a1a",
+                        "on-primary": "#ffffff",
+                        "surface-container-low": "#f2f4f6",
+                        "on-primary-fixed": "#00174b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1.5rem",
+                        "lg": "1.5rem",
+                        "xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap');
+
+        :root {
+            --primary: #004ac6;
+            --primary-glow: rgba(0, 74, 198, 0.3);
+            --secondary: #495c95;
+            --surface: #f8f9fb;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        body { 
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+        }
+        
+        h1, h2, h3, .brand-font { font-family: 'Manrope', sans-serif; }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: linear-gradient(135deg, #f8f9fb 0%, #edeef0 100%);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            word-wrap: break-word;
+        }
+
+        .message.bot .message-bubble {
+            background: white;
+            color: #191c1e;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .message.user .message-bubble {
+            background: #004ac6;
+            color: white;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e1e2e4;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+            padding: 0;
+            margin-top: 12px;
+        }
+
+        .image-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            aspect-ratio: 1;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            background: #f0f0f0;
+        }
+
+        .image-item:hover {
+            transform: scale(1.05);
+        }
+
+        .image-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            color: white;
+            padding: 8px;
+            font-size: 11px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .image-item:hover .image-overlay {
+            opacity: 1;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--surface);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+        }
+
+        .gsi_outer_content {
+            width: 100% !important;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl shadow-sm shadow-blue-900/5">
+    <div class="max-w-7xl mx-auto px-8 py-4 flex justify-between items-center">
+        <a href="index.html" class="text-xl font-bold tracking-tighter text-primary">KLOOKER MEDIA</a>
+        <div class="hidden md:flex gap-8 items-center">
+            <a class="text-slate-600 hover:text-primary font-['Manrope'] font-medium text-sm tracking-tight transition-all duration-300" href="index.html#dich-vu">Dịch Vụ</a>
+            <a class="text-slate-600 hover:text-primary font-['Manrope'] font-medium text-sm tracking-tight transition-all duration-300" href="index.html#quy-trinh">Quy Trình</a>
+            <a class="text-slate-600 hover:text-primary font-['Manrope'] font-medium text-sm tracking-tight transition-all duration-300" href="index.html#du-an">Dự Án</a>
+            <a class="text-primary font-['Manrope'] font-bold text-sm tracking-tight transition-all duration-300">Image Finder</a>
+            <a class="text-slate-600 hover:text-primary font-['Manrope'] font-medium text-sm tracking-tight transition-all duration-300" href="index.html#tu-van">Tư Vấn</a>
+            <a class="bg-primary text-on-primary px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-transform scale-95 active:scale-90" href="index.html#tu-van">Liên Hệ Ngay</a>
+        </div>
+    </div>
+</nav>
+
+<!-- Login Screen -->
+<div id="loginScreen" class="fixed inset-0 bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center z-40">
+    <div class="modal-content max-w-md">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold mb-2">AI Image Finder</h1>
+            <p class="text-on-surface-variant mb-4">Tìm ảnh trong Google Drive bằng AI</p>
+        </div>
+        
+        <div class="space-y-4">
+            <div id="googleLoginButton" class="flex justify-center"></div>
+            
+            <p class="text-center text-sm text-on-surface-variant" id="loadingStatus">
+                Đang tải cấu hình...
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Chat Screen -->
+<div id="chatScreen" class="hidden chat-container pt-20">
+    <!-- Header -->
+    <div class="bg-white border-b border-surface-container flex items-center justify-between px-6 py-4 fixed top-20 left-0 right-0 z-30">
+        <div>
+            <h2 class="text-lg font-bold">AI Image Finder</h2>
+            <p class="text-sm text-on-surface-variant" id="userEmail"></p>
+        </div>
+        <button onclick="logout()" class="text-slate-600 hover:text-primary p-2 rounded-full hover:bg-surface-container-low transition-colors">
+            <span class="material-symbols-outlined">logout</span>
+        </button>
+    </div>
+
+    <!-- Messages Area -->
+    <div class="chat-messages mt-12">
+        <div class="message bot">
+            <div class="message-bubble">
+                👋 Xin chào! Hãy mô tả ảnh bạn muốn tìm, tôi sẽ tìm kiếm trong Google Drive của bạn!
+            </div>
+        </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="chat-input-area">
+        <form id="chatForm" class="flex gap-3">
+            <input 
+                type="text" 
+                id="promptInput" 
+                placeholder="Nhập từ khóa (vd: 'ảnh hồng', 'ảnh quay cảnh')..." 
+                class="flex-1 bg-surface-container-low border-none rounded-full px-6 py-3 focus:ring-2 focus:ring-primary/20 transition-all"
+                autocomplete="off"
+            />
+            <button 
+                type="submit" 
+                class="bg-primary text-on-primary px-6 py-3 rounded-full hover:opacity-90 transition-opacity flex items-center gap-2 font-semibold"
+                id="sendBtn"
+            >
+                <span class="material-symbols-outlined">send</span>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Utility function để decode JWT (frontend decode)
+    function decodeJWT(token) {
+        try {
+            const parts = token.split('.');
+            if (parts.length !== 3) throw new Error('Invalid token');
+            
+            const decoded = JSON.parse(atob(parts[1]));
+            return decoded;
+        } catch (error) {
+            console.error('Error decoding JWT:', error);
+            return null;
+        }
+    }
+
+    // Google API Configuration
+    let GOOGLE_CLIENT_ID = null;
+    const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
+    const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
+    
+    let allDriveImages = [];
+    let currentUser = null;
+    let gapiInited = false;
+    let gisInited = false;
+
+    // Load config from server (JWT)
+    async function loadConfigFromServer() {
+        try {
+            const response = await fetch('/api/auth/google-config');
+            const data = await response.json();
+            
+            if (!data.success || !data.token) {
+                throw new Error('Failed to get config token');
+            }
+            
+            // Decode JWT token để lấy Client ID
+            const decoded = decodeJWT(data.token);
+            if (!decoded || !decoded.clientId) {
+                throw new Error('Invalid token payload');
+            }
+            
+            GOOGLE_CLIENT_ID = decoded.clientId;
+            console.log('✓ Config loaded successfully (JWT decoded)');
+            return true;
+            
+        } catch (error) {
+            console.error('Error loading config:', error);
+            document.getElementById('loadingStatus').textContent = 'Lỗi: Không thể tải cấu hình. Vui lòng thử lại.';
+            return false;
+        }
+    }
+
+    // Initialize Google API
+    function initializeGapi() {
+        gapi.load('client', initializeClient);
+    }
+
+    function initializeClient() {
+        gapi.client.init({
+            discoveryDocs: DISCOVERY_DOCS,
+            clientId: GOOGLE_CLIENT_ID,
+            scope: SCOPES,
+        }).then(function() {
+            gapiInited = true;
+            const isSignedIn = gapi.auth2.getAuthInstance().isSignedIn.get();
+            if (isSignedIn) {
+                showChatScreen();
+                loadDriveImages();
+            }
+        }, function(error) {
+            console.error('Error initializing gapi:', error);
+        });
+    }
+
+    // Initialize Google Sign-In
+    function initializeGsi() {
+        if (!GOOGLE_CLIENT_ID) {
+            console.error('Google Client ID not initialized');
+            document.getElementById('loadingStatus').textContent = 'Lỗi: Client ID không được tải.';
+            return;
+        }
+        
+        google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: handleCredentialResponse,
+            auto_select: false
+        });
+
+        google.accounts.id.renderButton(
+            document.getElementById('googleLoginButton'),
+            { 
+                theme: 'outline',
+                size: 'large',
+                text: 'signin_with',
+                width: '100%'
+            }
+        );
+
+        gisInited = true;
+        document.getElementById('loadingStatus').textContent = 'Đăng nhập với Gmail để truy cập Google Drive';
+    }
+
+    function handleCredentialResponse(response) {
+        // Decode JWT
+        const base64Url = response.credential.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        
+        currentUser = JSON.parse(jsonPayload);
+        
+        // Request Drive access
+        if (gapiInited) {
+            const auth2 = gapi.auth2.getAuthInstance();
+            auth2.signIn().then(() => {
+                showChatScreen();
+                loadDriveImages();
+            });
+        }
+    }
+
+    // Load images from Google Drive
+    async function loadDriveImages() {
+        try {
+            const response = await gapi.client.drive.files.list({
+                q: "trashed=false AND (mimeType='image/jpeg' OR mimeType='image/png' OR mimeType='image/gif' OR mimeType='image/webp' OR mimeType='image/svg+xml')",
+                spaces: 'drive',
+                fields: 'files(id,name,mimeType,createdTime,webContentLink,thumbnailLink)',
+                pageSize: 100,
+                orderBy: 'createdTime desc'
+            });
+
+            allDriveImages = response.result.files || [];
+            
+            if (allDriveImages.length > 0) {
+                addMessage(`📁 Tìm thấy ${allDriveImages.length} ảnh trong Google Drive của bạn`, 'bot');
+            } else {
+                addMessage(`📁 Chưa tìm thấy ảnh nào trong Google Drive`, 'bot');
+            }
+            addMessage('💡 Hãy nhập từ khóa để tìm ảnh (vd: "hồng", "quay cảnh", "team")...', 'bot');
+            
+        } catch (error) {
+            console.error('Error loading Drive images:', error);
+            addMessage('Lỗi khi tải ảnh từ Drive. Vui lòng thử lại.', 'bot');
+        }
+    }
+
+    // Search images
+    document.getElementById('chatForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const prompt = document.getElementById('promptInput').value.trim().toLowerCase();
+        if (!prompt) return;
+        
+        addMessage(prompt, 'user');
+        document.getElementById('promptInput').value = '';
+        document.getElementById('sendBtn').disabled = true;
+        
+        addMessage('🔍 Đang tìm kiếm...', 'bot', true);
+        
+        setTimeout(() => {
+            try {
+                const filteredImages = allDriveImages.filter(img => {
+                    const name = img.name.toLowerCase();
+                    const keywords = prompt.split(/\s+/);
+                    return keywords.some(keyword => name.includes(keyword));
+                });
+
+                removeLastMessage();
+
+                if (filteredImages.length > 0) {
+                    addImageGallery(filteredImages, prompt);
+                    addMessage(`✅ Tìm thấy ${filteredImages.length} ảnh`, 'bot');
+                } else {
+                    addMessage(`😕 Không tìm thấy ảnh. Hãy thử từ khóa khác!`, 'bot');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                removeLastMessage();
+                addMessage('Có lỗi xảy ra khi tìm kiếm.', 'bot');
+            }
+            
+            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('promptInput').focus();
+        }, 500);
+    });
+
+    function addMessage(text, sender = 'bot', isLoading = false) {
+        const messagesDiv = document.querySelector('.chat-messages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}`;
+        
+        const bubble = document.createElement('div');
+        bubble.className = 'message-bubble';
+        
+        if (isLoading) {
+            bubble.innerHTML = `<div class="flex items-center gap-2"><div class="loading-spinner"></div> ${text}</div>`;
+        } else {
+            bubble.textContent = text;
+        }
+        
+        messageDiv.appendChild(bubble);
+        messagesDiv.appendChild(messageDiv);
+        
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function removeLastMessage() {
+        const messages = document.querySelectorAll('.message');
+        if (messages.length > 0) {
+            messages[messages.length - 1].remove();
+        }
+    }
+
+    function addImageGallery(images, searchQuery) {
+        const messagesDiv = document.querySelector('.chat-messages');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message bot';
+        
+        const bubble = document.createElement('div');
+        bubble.className = 'message-bubble';
+        bubble.style.maxWidth = '85%';
+        
+        const gallery = document.createElement('div');
+        gallery.className = 'image-grid';
+        
+        images.slice(0, 12).forEach(image => {
+            const imageItem = document.createElement('div');
+            imageItem.className = 'image-item';
+            imageItem.onclick = () => openImageModal(image);
+            
+            const img = document.createElement('img');
+            img.src = image.thumbnailLink ? image.thumbnailLink.replace('=s220', '=s300') : `https://drive.google.com/thumbnail?id=${image.id}&sz=w200`;
+            img.alt = image.name;
+            img.loading = 'lazy';
+            
+            const overlay = document.createElement('div');
+            overlay.className = 'image-overlay';
+            overlay.innerHTML = `<div class="font-semibold truncate text-xs">${image.name.substring(0, 15)}</div>`;
+            
+            imageItem.appendChild(img);
+            imageItem.appendChild(overlay);
+            gallery.appendChild(imageItem);
+        });
+        
+        bubble.appendChild(gallery);
+        messageDiv.appendChild(bubble);
+        messagesDiv.appendChild(messageDiv);
+        
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function openImageModal(image) {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.onclick = () => modal.remove();
+        
+        const content = document.createElement('div');
+        content.className = 'modal-content';
+        content.onclick = (e) => e.stopPropagation();
+        
+        const previewUrl = `https://drive.google.com/uc?id=${image.id}&export=view`;
+        
+        content.innerHTML = `
+            <button onclick="this.closest('.modal-overlay').remove()" class="float-right mb-4 text-slate-600 hover:text-primary">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            <div style="clear: both;"></div>
+            <img src="${previewUrl}" alt="${image.name}" class="w-full rounded-lg mb-6 max-h-96 object-contain">
+            <h3 class="text-lg font-bold mb-2">${image.name}</h3>
+            <p class="text-on-surface-variant mb-6 text-sm">Tạo lúc: ${new Date(image.createdTime).toLocaleDateString('vi-VN')}</p>
+            <div class="flex gap-3 flex-col sm:flex-row">
+                <a href="${previewUrl}" target="_blank" class="flex-1 bg-primary text-on-primary py-3 rounded-full font-semibold text-center hover:opacity-90 transition-opacity">
+                    Xem Trong Tab Mới
+                </a>
+                <a href="${image.webContentLink}&export=download" class="flex-1 bg-secondary-container text-on-surface py-3 rounded-full font-semibold text-center hover:opacity-90 transition-opacity">
+                    Tải Xuống
+                </a>
+            </div>
+        `;
+        
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+    }
+
+    function logout() {
+        if (gapiInited) {
+            gapi.auth2.getAuthInstance().signOut();
+        }
+        
+        allDriveImages = [];
+        currentUser = null;
+        
+        document.getElementById('chatScreen').classList.add('hidden');
+        document.getElementById('loginScreen').style.display = 'flex';
+        document.querySelector('.chat-messages').innerHTML = `
+            <div class="message bot">
+                <div class="message-bubble">
+                    👋 Xin chào! Hãy mô tả ảnh bạn muốn tìm!
+                </div>
+            </div>
+        `;
+        
+        google.accounts.id.disableAutoSelect();
+    }
+
+    function showChatScreen() {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('chatScreen').classList.remove('hidden');
+        
+        if (currentUser) {
+            document.getElementById('userEmail').textContent = currentUser.email || 'Google User';
+        }
+    }
+
+    // Initialize on page load
+    window.addEventListener('load', async () => {
+        const configLoaded = await loadConfigFromServer();
+        
+        if (configLoaded) {
+            initializeGapi();
+            initializeGsi();
+        }
+    });
+</script>
+
+</body>
+</html>
