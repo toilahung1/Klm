@@ -338,150 +338,198 @@
 </div>
 
 <script>
-    // Utility function để decode JWT (frontend decode)
-    function decodeJWT(token) {
-        try {
-            const parts = token.split('.');
-            if (parts.length !== 3) throw new Error('Invalid token');
-            
-            const decoded = JSON.parse(atob(parts[1]));
-            return decoded;
-        } catch (error) {
-            console.error('Error decoding JWT:', error);
-            return null;
-        }
-    }
-
-    // Google API Configuration
-    let GOOGLE_CLIENT_ID = null;
+    // Client ID dùng ở frontend (Google OAuth cho web app - không phải secret)
+    const GOOGLE_CLIENT_ID = '844249668292-hgk5167darjhn9vsptmr9bfn31dh7d3a.apps.googleusercontent.com';
     const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
-    const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
-    
+    const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email openid profile';
+
     let allDriveImages = [];
     let currentUser = null;
     let gapiInited = false;
-    let gisInited = false;
+    let tokenClient = null;
+    let isLoadingDrive = false;
 
-    // Load config from server (JWT)
-    async function loadConfigFromServer() {
-        try {
-            const response = await fetch('/api/auth/google-config');
-            const data = await response.json();
-            
-            if (!data.success || !data.token) {
-                throw new Error('Failed to get config token');
+    function normalizeText(text) {
+        return (text || '')
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/đ/g, 'd');
+    }
+
+    function scoreImage(image, query) {
+        const name = normalizeText(image.name);
+        const keywords = normalizeText(query).split(/\s+/).filter(Boolean);
+        if (!keywords.length) return 0;
+
+        let score = 0;
+        const parts = name.split(/[\s._\-]+/);
+
+        keywords.forEach((keyword) => {
+            if (name.includes(keyword)) {
+                score += 12;
+                return;
             }
-            
-            // Decode JWT token để lấy Client ID
-            const decoded = decodeJWT(data.token);
-            if (!decoded || !decoded.clientId) {
-                throw new Error('Invalid token payload');
+
+            if (parts.some((part) => part.startsWith(keyword) || keyword.startsWith(part))) {
+                score += 7;
             }
-            
-            GOOGLE_CLIENT_ID = decoded.clientId;
-            console.log('✓ Config loaded successfully (JWT decoded)');
-            return true;
-            
-        } catch (error) {
-            console.error('Error loading config:', error);
-            document.getElementById('loadingStatus').textContent = 'Lỗi: Không thể tải cấu hình. Vui lòng thử lại.';
-            return false;
+        });
+
+        if (keywords.every((keyword) => name.includes(keyword))) {
+            score += 25;
         }
+
+        return score;
     }
 
-    // Initialize Google API
-    function initializeGapi() {
-        gapi.load('client', initializeClient);
+    function searchImages(query) {
+        return allDriveImages
+            .map((image) => ({ image, score: scoreImage(image, query) }))
+            .filter((result) => result.score > 0)
+            .sort((a, b) => b.score - a.score || new Date(b.image.createdTime) - new Date(a.image.createdTime))
+            .map((result) => result.image);
     }
 
-    function initializeClient() {
-        gapi.client.init({
-            discoveryDocs: DISCOVERY_DOCS,
-            clientId: GOOGLE_CLIENT_ID,
-            scope: SCOPES,
-        }).then(function() {
-            gapiInited = true;
-            const isSignedIn = gapi.auth2.getAuthInstance().isSignedIn.get();
-            if (isSignedIn) {
-                showChatScreen();
-                loadDriveImages();
-            }
-        }, function(error) {
-            console.error('Error initializing gapi:', error);
+    function waitForGoogleLibs() {
+        return new Promise((resolve, reject) => {
+            let attempts = 0;
+            const timer = setInterval(() => {
+                attempts += 1;
+                if (window.gapi && window.google?.accounts?.oauth2) {
+                    clearInterval(timer);
+                    resolve();
+                    return;
+                }
+                if (attempts > 100) {
+                    clearInterval(timer);
+                    reject(new Error('Google libraries failed to load'));
+                }
+            }, 100);
         });
     }
 
-    // Initialize Google Sign-In
-    function initializeGsi() {
-        if (!GOOGLE_CLIENT_ID) {
-            console.error('Google Client ID not initialized');
-            document.getElementById('loadingStatus').textContent = 'Lỗi: Client ID không được tải.';
+    async function initializeApp() {
+        const statusEl = document.getElementById('loadingStatus');
+        statusEl.textContent = 'Đang khởi tạo Google Sign-In...';
+
+        try {
+            await waitForGoogleLibs();
+
+            await new Promise((resolve, reject) => {
+                gapi.load('client', async () => {
+                    try {
+                        await gapi.client.init({ discoveryDocs: DISCOVERY_DOCS });
+                        gapiInited = true;
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
+                });
+            });
+
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: SCOPES,
+                callback: handleTokenResponse,
+            });
+
+            renderGoogleLoginButton();
+            statusEl.textContent = 'Đăng nhập bằng Gmail để tìm ảnh trong Google Drive của bạn';
+        } catch (error) {
+            console.error('Init error:', error);
+            statusEl.textContent = 'Không tải được Google Sign-In. Vui lòng tải lại trang.';
+        }
+    }
+
+    function renderGoogleLoginButton() {
+        const container = document.getElementById('googleLoginButton');
+        container.innerHTML = '';
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'w-full flex items-center justify-center gap-3 border border-slate-300 rounded-full px-6 py-3 bg-white hover:bg-slate-50 transition-colors font-semibold text-slate-700';
+        button.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.56 2.95-2.24 5.45-4.78 7.14l7.73 6.01c4.52-4.18 7.12-10.33 7.12-17.62z"/>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C2.38 16.62 0 20.04 0 24s2.38 7.38 6.56 10.78l7.97-6.19z"/>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6.01c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            Đăng nhập bằng Gmail
+        `;
+        button.onclick = () => {
+            if (!tokenClient) return;
+            document.getElementById('loadingStatus').textContent = 'Đang mở cửa sổ đăng nhập Google...';
+            tokenClient.requestAccessToken({ prompt: 'consent' });
+        };
+
+        container.appendChild(button);
+    }
+
+    async function handleTokenResponse(response) {
+        const statusEl = document.getElementById('loadingStatus');
+
+        if (response.error) {
+            statusEl.textContent = 'Đăng nhập không thành công. Vui lòng thử lại.';
             return;
         }
-        
-        google.accounts.id.initialize({
-            client_id: GOOGLE_CLIENT_ID,
-            callback: handleCredentialResponse,
-            auto_select: false
-        });
 
-        google.accounts.id.renderButton(
-            document.getElementById('googleLoginButton'),
-            { 
-                theme: 'outline',
-                size: 'large',
-                text: 'signin_with',
-                width: '100%'
-            }
-        );
+        gapi.client.setToken(response);
 
-        gisInited = true;
-        document.getElementById('loadingStatus').textContent = 'Đăng nhập với Gmail để truy cập Google Drive';
-    }
+        try {
+            const userInfo = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${response.access_token}` }
+            }).then((res) => res.json());
 
-    function handleCredentialResponse(response) {
-        // Decode JWT
-        const base64Url = response.credential.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        
-        currentUser = JSON.parse(jsonPayload);
-        
-        // Request Drive access
-        if (gapiInited) {
-            const auth2 = gapi.auth2.getAuthInstance();
-            auth2.signIn().then(() => {
-                showChatScreen();
-                loadDriveImages();
-            });
+            currentUser = userInfo;
+            showChatScreen();
+            await loadDriveImages();
+        } catch (error) {
+            console.error('Login error:', error);
+            statusEl.textContent = 'Đăng nhập thành công nhưng không đọc được tài khoản. Vui lòng thử lại.';
         }
     }
 
-    // Load images from Google Drive
     async function loadDriveImages() {
-        try {
-            const response = await gapi.client.drive.files.list({
-                q: "trashed=false AND (mimeType='image/jpeg' OR mimeType='image/png' OR mimeType='image/gif' OR mimeType='image/webp' OR mimeType='image/svg+xml')",
-                spaces: 'drive',
-                fields: 'files(id,name,mimeType,createdTime,webContentLink,thumbnailLink)',
-                pageSize: 100,
-                orderBy: 'createdTime desc'
-            });
+        if (!gapiInited || isLoadingDrive) return;
 
-            allDriveImages = response.result.files || [];
-            
+        isLoadingDrive = true;
+        addMessage('⏳ Đang quét ảnh trong Google Drive...', 'bot', true);
+
+        try {
+            allDriveImages = [];
+            let pageToken = null;
+
+            do {
+                const response = await gapi.client.drive.files.list({
+                    q: "trashed=false and mimeType contains 'image/'",
+                    spaces: 'drive',
+                    fields: 'nextPageToken, files(id,name,mimeType,createdTime,webContentLink,thumbnailLink)',
+                    pageSize: 100,
+                    pageToken,
+                    orderBy: 'createdTime desc'
+                });
+
+                allDriveImages.push(...(response.result.files || []));
+                pageToken = response.result.nextPageToken;
+            } while (pageToken && allDriveImages.length < 500);
+
+            removeLastMessage();
+
             if (allDriveImages.length > 0) {
-                addMessage(`📁 Tìm thấy ${allDriveImages.length} ảnh trong Google Drive của bạn`, 'bot');
+                addMessage(`📁 Đã tìm thấy ${allDriveImages.length} ảnh trong Drive của bạn`, 'bot');
             } else {
-                addMessage(`📁 Chưa tìm thấy ảnh nào trong Google Drive`, 'bot');
+                addMessage('📁 Chưa thấy ảnh nào trong Google Drive. Hãy thử upload ảnh rồi quay lại.', 'bot');
             }
-            addMessage('💡 Hãy nhập từ khóa để tìm ảnh (vd: "hồng", "quay cảnh", "team")...', 'bot');
-            
+
+            addMessage('💡 Gõ mô tả hoặc từ khóa, ví dụ: "tết", "team", "quay phim", "logo"...', 'bot');
         } catch (error) {
             console.error('Error loading Drive images:', error);
-            addMessage('Lỗi khi tải ảnh từ Drive. Vui lòng thử lại.', 'bot');
+            removeLastMessage();
+            addMessage('Không tải được ảnh từ Drive. Hãy đăng xuất và đăng nhập lại.', 'bot');
+        } finally {
+            isLoadingDrive = false;
         }
     }
 
@@ -500,19 +548,15 @@
         
         setTimeout(() => {
             try {
-                const filteredImages = allDriveImages.filter(img => {
-                    const name = img.name.toLowerCase();
-                    const keywords = prompt.split(/\s+/);
-                    return keywords.some(keyword => name.includes(keyword));
-                });
+                const filteredImages = searchImages(prompt);
 
                 removeLastMessage();
 
                 if (filteredImages.length > 0) {
                     addImageGallery(filteredImages, prompt);
-                    addMessage(`✅ Tìm thấy ${filteredImages.length} ảnh`, 'bot');
+                    addMessage(`✅ Tìm thấy ${filteredImages.length} ảnh phù hợp với "${prompt}"`, 'bot');
                 } else {
-                    addMessage(`😕 Không tìm thấy ảnh. Hãy thử từ khóa khác!`, 'bot');
+                    addMessage(`😕 Không thấy ảnh nào khớp "${prompt}". Thử từ khóa ngắn hơn hoặc tên file trong Drive.`, 'bot');
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -624,15 +668,20 @@
     }
 
     function logout() {
-        if (gapiInited) {
-            gapi.auth2.getAuthInstance().signOut();
+        const token = gapi.client.getToken();
+        if (token?.access_token) {
+            google.accounts.oauth2.revoke(token.access_token, () => {
+                gapi.client.setToken(null);
+            });
         }
-        
+
         allDriveImages = [];
         currentUser = null;
-        
+        isLoadingDrive = false;
+
         document.getElementById('chatScreen').classList.add('hidden');
         document.getElementById('loginScreen').style.display = 'flex';
+        document.getElementById('loadingStatus').textContent = 'Đăng nhập bằng Gmail để tìm ảnh trong Google Drive của bạn';
         document.querySelector('.chat-messages').innerHTML = `
             <div class="message bot">
                 <div class="message-bubble">
@@ -640,8 +689,8 @@
                 </div>
             </div>
         `;
-        
-        google.accounts.id.disableAutoSelect();
+
+        renderGoogleLoginButton();
     }
 
     function showChatScreen() {
@@ -653,15 +702,7 @@
         }
     }
 
-    // Initialize on page load
-    window.addEventListener('load', async () => {
-        const configLoaded = await loadConfigFromServer();
-        
-        if (configLoaded) {
-            initializeGapi();
-            initializeGsi();
-        }
-    });
+    window.addEventListener('load', initializeApp);
 </script>
 
 </body>
