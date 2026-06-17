@@ -480,6 +480,59 @@
     let gapiInited = false;
     let tokenClient = null;
     let isLoadingDrive = false;
+    let currentAccessToken = null;
+
+    function getDriveErrorMessage(error) {
+        const status = error?.status || error?.result?.error?.code;
+        const message = error?.result?.error?.message || error?.message || '';
+
+        if (status === 403 || message.includes('accessNotConfigured')) {
+            return 'Google Drive API chưa được bật. Vào Google Cloud Console → API Library → bật "Google Drive API" cho project klooker-media-image-finder.';
+        }
+        if (status === 401) {
+            return 'Phiên đăng nhập hết hạn. Vui lòng đăng xuất và đăng nhập lại.';
+        }
+        if (message) return message;
+        return 'Không tải được ảnh từ Drive. Hãy đăng xuất và đăng nhập lại.';
+    }
+
+    async function fetchDriveImages(accessToken) {
+        const collected = [];
+        let pageToken = '';
+
+        const query = "trashed=false and (mimeType contains 'image/' or mimeType contains 'photo')";
+
+        do {
+            const params = new URLSearchParams({
+                q: query,
+                pageSize: '100',
+                fields: 'nextPageToken,files(id,name,mimeType,createdTime,webContentLink,thumbnailLink,iconLink)',
+                orderBy: 'createdTime desc',
+                includeItemsFromAllDrives: 'true',
+                supportsAllDrives: 'true'
+            });
+
+            if (pageToken) params.set('pageToken', pageToken);
+
+            const response = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                const err = new Error(data?.error?.message || 'Drive API error');
+                err.status = response.status;
+                err.result = { error: data?.error };
+                throw err;
+            }
+
+            collected.push(...(data.files || []));
+            pageToken = data.nextPageToken || '';
+        } while (pageToken && collected.length < 500);
+
+        return collected;
+    }
 
     function getGeminiApiKey() {
         return localStorage.getItem(GEMINI_KEY_STORAGE) || '';
@@ -499,8 +552,15 @@
     }
 
     function getThumbnailUrl(image, size = 300) {
+        if (currentAccessToken && image.thumbnailLink) {
+            const joiner = image.thumbnailLink.includes('?') ? '&' : '?';
+            return `${image.thumbnailLink}${joiner}access_token=${currentAccessToken}`;
+        }
         if (image.thumbnailLink) {
             return image.thumbnailLink.replace(/=s\d+$/, `=s${size}`);
+        }
+        if (currentAccessToken) {
+            return `https://www.googleapis.com/drive/v3/files/${image.id}?alt=media&access_token=${currentAccessToken}`;
         }
         return `https://drive.google.com/thumbnail?id=${image.id}&sz=w${size}`;
     }
@@ -540,15 +600,24 @@
 
     async function searchDriveFullText(query) {
         const safeQuery = query.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        if (!currentAccessToken) return [];
+
         try {
-            const response = await gapi.client.drive.files.list({
-                q: `trashed=false and mimeType contains 'image/' and fullText contains '${safeQuery}'`,
-                spaces: 'drive',
-                fields: 'files(id,name,mimeType,createdTime,webContentLink,thumbnailLink)',
-                pageSize: 50,
-                orderBy: 'createdTime desc'
+            const params = new URLSearchParams({
+                q: `trashed=false and (mimeType contains 'image/' or mimeType contains 'photo') and fullText contains '${safeQuery}'`,
+                pageSize: '50',
+                fields: 'files(id,name,mimeType,createdTime,webContentLink,thumbnailLink,iconLink)',
+                orderBy: 'createdTime desc',
+                includeItemsFromAllDrives: 'true',
+                supportsAllDrives: 'true'
             });
-            return response.result.files || [];
+
+            const response = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
+                headers: { Authorization: `Bearer ${currentAccessToken}` }
+            });
+            const data = await response.json();
+            if (!response.ok) return [];
+            return data.files || [];
         } catch (error) {
             console.warn('Drive fullText search failed:', error);
             return [];
@@ -757,6 +826,7 @@ Giới hạn tối đa 24 id, xếp theo độ liên quan.`;
         }
 
         gapi.client.setToken(response);
+        currentAccessToken = response.access_token;
 
         try {
             const userInfo = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
@@ -773,29 +843,14 @@ Giới hạn tối đa 24 id, xếp theo độ liên quan.`;
     }
 
     async function loadDriveImages() {
-        if (!gapiInited || isLoadingDrive) return;
+        if (isLoadingDrive || !currentAccessToken) return;
 
         isLoadingDrive = true;
+        document.getElementById('galleryStatus').textContent = 'Đang tải ảnh...';
         addMessage('⏳ Đang quét ảnh trong Google Drive...', 'bot', true);
 
         try {
-            allDriveImages = [];
-            let pageToken = null;
-
-            do {
-                const response = await gapi.client.drive.files.list({
-                    q: "trashed=false and mimeType contains 'image/'",
-                    spaces: 'drive',
-                    fields: 'nextPageToken, files(id,name,mimeType,createdTime,webContentLink,thumbnailLink)',
-                    pageSize: 100,
-                    pageToken,
-                    orderBy: 'createdTime desc'
-                });
-
-                allDriveImages.push(...(response.result.files || []));
-                pageToken = response.result.nextPageToken;
-            } while (pageToken && allDriveImages.length < 500);
-
+            allDriveImages = await fetchDriveImages(currentAccessToken);
             removeLastMessage();
 
             renderGallery(allDriveImages, `${allDriveImages.length} ảnh trong Drive`);
@@ -803,14 +858,18 @@ Giới hạn tối đa 24 id, xếp theo độ liên quan.`;
             if (allDriveImages.length > 0) {
                 addMessage(`📁 Đã tải ${allDriveImages.length} ảnh từ Google Drive. Xem gallery bên phải!`, 'bot');
             } else {
-                addMessage('📁 Chưa thấy ảnh nào trong Google Drive. Hãy upload ảnh rồi quay lại.', 'bot');
+                addMessage('📁 Chưa thấy ảnh nào trong Google Drive của bạn. Hãy thử upload ảnh (.jpg, .png...) vào Drive rồi bấm đăng xuất → đăng nhập lại.', 'bot');
+                renderGallery([], '0 ảnh · Drive trống hoặc chưa có file ảnh');
             }
 
             addMessage('🤖 Mô tả ảnh bạn cần — AI Gemini sẽ tìm giúp (VD: "ảnh team tết", "poster sự kiện")', 'bot');
         } catch (error) {
             console.error('Error loading Drive images:', error);
             removeLastMessage();
-            addMessage('Không tải được ảnh từ Drive. Hãy đăng xuất và đăng nhập lại.', 'bot');
+            const message = getDriveErrorMessage(error);
+            addMessage(`❌ ${message}`, 'bot');
+            document.getElementById('galleryStatus').textContent = 'Lỗi tải ảnh';
+            document.getElementById('driveGallery').innerHTML = `<div class="gallery-empty">${message}</div>`;
         } finally {
             isLoadingDrive = false;
         }
@@ -928,7 +987,9 @@ Giới hạn tối đa 24 id, xếp theo độ liên quan.`;
         content.className = 'modal-content';
         content.onclick = (e) => e.stopPropagation();
         
-        const previewUrl = `https://drive.google.com/uc?id=${image.id}&export=view`;
+        const previewUrl = currentAccessToken
+            ? `https://www.googleapis.com/drive/v3/files/${image.id}?alt=media&access_token=${currentAccessToken}`
+            : `https://drive.google.com/uc?id=${image.id}&export=view`;
         
         content.innerHTML = `
             <button onclick="this.closest('.modal-overlay').remove()" class="float-right mb-4 text-slate-600 hover:text-primary">
@@ -963,6 +1024,7 @@ Giới hạn tối đa 24 id, xếp theo độ liên quan.`;
         allDriveImages = [];
         displayedImages = [];
         currentUser = null;
+        currentAccessToken = null;
         isLoadingDrive = false;
 
         document.getElementById('chatScreen').classList.add('hidden');
