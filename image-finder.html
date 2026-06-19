@@ -513,6 +513,8 @@
     const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email openid profile';
     const GEMINI_MODEL = 'gemini-2.0-flash';
     const GEMINI_KEY_STORAGE = 'klooker_gemini_api_key';
+    // Key Gemini dựng sẵn của hệ thống (chủ web điền). Để trống = chỉ dùng tìm kiếm thông minh không cần AI.
+    const GEMINI_API_KEY = '';
 
     let allDriveImages = [];
     let displayedImages = [];
@@ -575,20 +577,9 @@
     }
 
     function getGeminiApiKey() {
-        return localStorage.getItem(GEMINI_KEY_STORAGE) || '';
-    }
-
-    function ensureGeminiApiKey() {
-        const existing = getGeminiApiKey();
-        if (existing) return existing;
-
-        const key = window.prompt(
-            'Nhập Gemini API Key (miễn phí, lấy tại aistudio.google.com/apikey).\nChỉ cần nhập 1 lần trên trình duyệt này:'
-        );
-
-        if (!key || !key.trim()) return '';
-        localStorage.setItem(GEMINI_KEY_STORAGE, key.trim());
-        return key.trim();
+        // Ưu tiên key dựng sẵn của hệ thống; nếu trống thì dùng key người dùng tự lưu (nếu có).
+        return (typeof GEMINI_API_KEY === 'string' && GEMINI_API_KEY) ||
+            localStorage.getItem(GEMINI_KEY_STORAGE) || '';
     }
 
     function getThumbnailUrl(image, size = 300) {
@@ -665,7 +656,7 @@
     }
 
     async function searchWithGemini(query, candidates) {
-        const apiKey = getGeminiApiKey() || ensureGeminiApiKey();
+        const apiKey = getGeminiApiKey();
         if (!apiKey) return null;
 
         const catalog = candidates.slice(0, 120).map((image) => ({
