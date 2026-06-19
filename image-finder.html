@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Klooker Media Image Finder - AI Image Search</title>
+    <title>Klooker Media Image Finder - Tìm ảnh Drive</title>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -432,7 +432,7 @@
     <div class="modal-content max-w-md">
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold mb-2">Klooker Media Image Finder</h1>
-            <p class="text-on-surface-variant mb-4">Tìm ảnh trong Google Drive bằng AI</p>
+            <p class="text-on-surface-variant mb-4">Tìm ảnh trong Google Drive nhanh, miễn phí</p>
         </div>
         
         <div class="space-y-4">
@@ -442,7 +442,7 @@
                 Đang tải cấu hình...
             </p>
             <p class="text-center text-xs text-on-surface-variant">
-                Đăng nhập Gmail → xem ảnh Drive → mô tả để AI Gemini tìm giúp
+                Đăng nhập Gmail → xem ảnh Drive → gõ tên file, tháng, từ khóa để tìm
             </p>
             <p class="text-center text-xs text-on-surface-variant mt-2">
                 <a href="privacy.html" class="text-primary hover:underline">Chính sách bảo mật</a>
@@ -459,7 +459,7 @@
         <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
                 <h2 class="text-lg font-bold truncate">Klooker Media Image Finder</h2>
-                <span class="ai-badge"><span class="material-symbols-outlined text-sm">auto_awesome</span> Gemini AI</span>
+                <span class="ai-badge"><span class="material-symbols-outlined text-sm">folder</span> Google Drive</span>
             </div>
             <p class="text-sm text-on-surface-variant truncate" id="userEmail"></p>
         </div>
@@ -473,7 +473,7 @@
             <input
                 type="text"
                 id="promptInput"
-                placeholder="Mô tả ảnh cần tìm: sự kiện tết, team, logo..."
+                placeholder="Tên file, tháng 5, menu, logo, event, 2025..."
                 class="w-full bg-surface-container-low border-none rounded-full px-6 py-3.5 focus:ring-2 focus:ring-primary/20 transition-all text-sm"
                 autocomplete="off"
             />
@@ -511,8 +511,7 @@
     const GOOGLE_CLIENT_ID = '42024300272-hqn54cffhmal5tuick7uqcerufpulhlp.apps.googleusercontent.com';
     const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
     const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email openid profile';
-    // Proxy AI server-side (Vercel) — giữ key an toàn, khách không cần nhập gì.
-    const GEMINI_PROXY_URL = 'https://gemini-proxy-two-mu.vercel.app/api/gemini';
+    const STOP_WORDS = new Set(['tim', 'anh', 'image', 'photo', 'theo', 'trong', 'giup', 'cho', 'tooi', 'can']);
 
     let allDriveImages = [];
     let displayedImages = [];
@@ -598,7 +597,7 @@
 
     function parseQueryFilters(query) {
         const normalized = normalizeText(query);
-        const filters = { months: [], keywords: [] };
+        const filters = { months: [], keywords: [], year: null };
 
         const monthMap = {
             'thang 1': 1, 'thang 2': 2, 'thang 3': 3, 'thang 4': 4,
@@ -622,34 +621,46 @@
 
         filters.keywords = normalized
             .split(/\s+/)
-            .filter((word) => word.length > 1 && !['tim', 'anh', 'image', 'photo', 'theo', 'trong'].includes(word));
+            .filter((word) => word.length > 1 && !STOP_WORDS.has(word) && !word.startsWith('thang'));
+
+        const yearMatch = normalized.match(/\b(20\d{2})\b/);
+        if (yearMatch) filters.year = parseInt(yearMatch[1], 10);
 
         return filters;
     }
 
     function filterImagesByDate(images, months) {
-        if (!months.length) return images;
         return images.filter((image) => {
             const date = new Date(image.createdTime);
             return months.includes(date.getMonth() + 1);
         });
     }
 
-    function scoreImage(image, query) {
+    function filterImagesByYear(images, year) {
+        if (!year) return images;
+        return images.filter((image) => new Date(image.createdTime).getFullYear() === year);
+    }
+
+    function scoreImageKeywords(image, keywords) {
         const name = normalizeText(image.name);
-        const keywords = normalizeText(query).split(/\s+/).filter(Boolean);
         if (!keywords.length) return 0;
 
         let score = 0;
         const parts = name.split(/[\s._\-]+/);
 
         keywords.forEach((keyword) => {
+            if (STOP_WORDS.has(keyword)) return;
             if (name.includes(keyword)) score += 12;
             else if (parts.some((part) => part.startsWith(keyword) || keyword.startsWith(part))) score += 7;
         });
 
-        if (keywords.every((keyword) => name.includes(keyword))) score += 25;
+        if (keywords.filter((k) => !STOP_WORDS.has(k)).every((keyword) => name.includes(keyword))) score += 25;
         return score;
+    }
+
+    function scoreImage(image, query) {
+        const keywords = normalizeText(query).split(/\s+/).filter(Boolean);
+        return scoreImageKeywords(image, keywords);
     }
 
     function searchImagesLocal(query) {
@@ -660,14 +671,14 @@
             .map((result) => result.image);
     }
 
-    async function searchDriveFullText(query) {
-        const safeQuery = query.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-        if (!currentAccessToken) return [];
+    async function searchDriveFullText(term) {
+        const safeQuery = term.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        if (!currentAccessToken || !safeQuery.trim()) return [];
 
         try {
             const params = new URLSearchParams({
                 q: `trashed=false and (mimeType contains 'image/' or mimeType contains 'photo') and fullText contains '${safeQuery}'`,
-                pageSize: '50',
+                pageSize: '100',
                 fields: 'files(id,name,mimeType,createdTime,webContentLink,thumbnailLink,iconLink)',
                 orderBy: 'createdTime desc',
                 includeItemsFromAllDrives: 'true',
@@ -686,93 +697,88 @@
         }
     }
 
-    async function searchWithGemini(query, candidates) {
-        if (!GEMINI_PROXY_URL) return null;
+    async function searchDriveByKeywords(keywords) {
+        const merged = new Map();
+        const terms = [...new Set(keywords.filter((term) => term.length > 1))];
 
-        const catalog = candidates.slice(0, 400).map((image) => ({
-            id: image.id,
-            name: image.name,
-            created: image.createdTime
-        }));
-
-        const response = await fetch(GEMINI_PROXY_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query, catalog })
-        });
-
-        const parsed = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-            const detail = parsed.detail || parsed.error || `HTTP ${response.status}`;
-            throw new Error(typeof detail === 'string' ? detail.slice(0, 200) : 'AI proxy error');
+        if (terms.length > 1) {
+            const combined = await searchDriveFullText(terms.join(' '));
+            combined.forEach((file) => merged.set(file.id, file));
         }
 
-        const idSet = new Set(parsed.ids || []);
-        const ranked = (parsed.ids || [])
-            .map((id) => candidates.find((image) => image.id === id))
-            .filter(Boolean);
+        for (const term of terms) {
+            const files = await searchDriveFullText(term);
+            files.forEach((file) => merged.set(file.id, file));
+        }
 
-        return {
-            images: ranked.length ? ranked : candidates.filter((image) => idSet.has(image.id)),
-            summary: parsed.summary || (ranked.length ? `AI đã chọn ${ranked.length} ảnh phù hợp.` : 'AI không tìm thấy ảnh phù hợp.')
-        };
+        return Array.from(merged.values());
     }
 
     async function searchImagesSmart(query) {
         const filters = parseQueryFilters(query);
-        let pool = filterImagesByDate(allDriveImages, filters.months);
+        let pool = allDriveImages;
 
-        if (!pool.length && filters.months.length) {
+        if (filters.months.length) pool = filterImagesByDate(pool, filters.months);
+        if (filters.year) pool = filterImagesByYear(pool, filters.year);
+
+        if (!pool.length && (filters.months.length || filters.year)) {
+            const parts = [];
+            if (filters.months.length) parts.push(`tháng ${filters.months.join(', ')}`);
+            if (filters.year) parts.push(`năm ${filters.year}`);
             return {
-                mode: 'local',
+                mode: 'drive',
                 images: [],
-                summary: `Không có ảnh nào được tạo trong tháng ${filters.months.join(', ')}.`
+                summary: `Không có ảnh nào trong ${parts.join(', ')}.`
             };
         }
 
-        if (!pool.length) pool = allDriveImages;
+        const keywords = filters.keywords.length
+            ? filters.keywords
+            : normalizeText(query).split(/\s+/).filter((word) => word.length > 1 && !STOP_WORDS.has(word));
 
-        const localResults = searchImagesLocal(query).filter((image) => pool.some((item) => item.id === image.id));
-        const fullTextResults = await searchDriveFullText(query);
-        const fullTextInPool = fullTextResults.filter((image) => pool.some((item) => item.id === image.id));
+        if (!keywords.length && filters.months.length) {
+            const sorted = [...pool].sort((a, b) => new Date(b.createdTime) - new Date(a.createdTime));
+            return {
+                mode: 'drive',
+                images: sorted,
+                summary: `${sorted.length} ảnh trong tháng ${filters.months.join(', ')}${filters.year ? ` năm ${filters.year}` : ''}.`
+            };
+        }
+
+        const localScored = pool
+            .map((image) => ({ image, score: scoreImageKeywords(image, keywords) }))
+            .filter((result) => result.score > 0);
+
+        const driveResults = keywords.length
+            ? await searchDriveByKeywords(keywords)
+            : await searchDriveFullText(query);
+
+        const driveInPool = driveResults.filter((image) => pool.some((item) => item.id === image.id));
 
         const merged = new Map();
-        [...localResults, ...fullTextInPool].forEach((image) => merged.set(image.id, image));
+        localScored.forEach(({ image, score }) => merged.set(image.id, { image, score }));
+        driveInPool.forEach((image) => {
+            const score = scoreImageKeywords(image, keywords) + 15 + (merged.get(image.id)?.score || 0);
+            merged.set(image.id, { image, score });
+        });
 
-        let candidates = Array.from(merged.values());
-        if (candidates.length < 20) {
-            const scored = pool
-                .map((image) => ({ image, score: scoreImage(image, query) }))
-                .sort((a, b) => b.score - a.score)
-                .slice(0, 400)
-                .map((item) => item.image);
-            candidates = scored.length ? scored : pool.slice(0, 400);
-        } else {
-            candidates = candidates.slice(0, 400);
-        }
+        const results = Array.from(merged.values())
+            .sort((a, b) => b.score - a.score || new Date(b.image.createdTime) - new Date(a.image.createdTime))
+            .map((item) => item.image);
 
-        try {
-            const aiResult = await searchWithGemini(query, candidates);
-            return { mode: 'ai', ...aiResult };
-        } catch (error) {
-            console.warn('AI search failed:', error);
-
-            const strongLocal = localResults.filter((image) => scoreImage(image, query) >= 12);
-            if (strongLocal.length) {
-                return {
-                    mode: 'local',
-                    images: strongLocal,
-                    summary: `AI tạm không khả dụng. Hiển thị ${strongLocal.length} ảnh khớp tên file.`
-                };
-            }
-
+        if (!results.length) {
             return {
-                mode: 'error',
+                mode: 'drive',
                 images: [],
-                summary: `AI không phản hồi (${error.message || 'lỗi quota/key'}). Kiểm tra API key Gemini hoặc thử lại sau.`
+                summary: `Không thấy ảnh khớp "${query}". Thử tên file (menu, anh1, DSC), "tháng 5", hoặc năm 2025.`
             };
         }
+
+        return {
+            mode: 'drive',
+            images: results,
+            summary: `Tìm thấy ${results.length} ảnh khớp "${query}".`
+        };
     }
 
     function renderGallery(images, statusText) {
@@ -924,7 +930,7 @@
             renderGallery(allDriveImages, `${allDriveImages.length} ảnh trong Drive`);
 
             if (allDriveImages.length > 0) {
-                updateStatus(`Đã tải ${allDriveImages.length} ảnh. Gõ mô tả ở trên để AI tìm giúp.`, 'success');
+                updateStatus(`Đã tải ${allDriveImages.length} ảnh. Gõ tên file, tháng hoặc từ khóa để tìm.`, 'success');
             } else {
                 updateStatus('Chưa thấy ảnh trong Drive. Upload ảnh (.jpg, .png) rồi đăng nhập lại.', 'error');
                 renderGallery([], '0 ảnh');
@@ -957,7 +963,7 @@
         try {
             const result = await searchImagesSmart(prompt);
 
-            renderGallery(result.images, `${result.images.length} ảnh · ${result.mode === 'ai' ? 'AI Gemini' : result.mode === 'error' ? 'Lỗi AI' : 'Tìm theo tên file'}`);
+            renderGallery(result.images, `${result.images.length} ảnh · Tìm Drive`);
 
             if (result.images.length > 0) {
                 updateStatus(result.summary, result.mode === 'error' ? 'error' : 'success');
