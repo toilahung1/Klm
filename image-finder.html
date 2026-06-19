@@ -733,25 +733,25 @@
         return normalizeText(parts.join(' '));
     }
 
+    function passesStrictKeywordMatch(haystack, keywords, rawQuery) {
+        const normalizedQuery = normalizeText(rawQuery);
+        const effective = keywords.filter((k) => !STOP_WORDS.has(k) && k.length > 1);
+
+        if (normalizedQuery.length > 2 && haystack.includes(normalizedQuery)) return true;
+        if (!effective.length) return false;
+        if (effective.length === 1) return haystack.includes(effective[0]);
+        return effective.every((kw) => haystack.includes(kw));
+    }
+
     function scoreForSearch(image, entry, keywords, rawQuery) {
         const haystack = getSearchableText(image, entry);
-        const nameScore = scoreImageKeywords(image, keywords);
-        if (!keywords.length) return nameScore;
+        if (!passesStrictKeywordMatch(haystack, keywords, rawQuery)) return 0;
 
-        let score = nameScore;
-        keywords.forEach((keyword) => {
-            if (haystack.includes(keyword)) score += entry ? 20 : 10;
-        });
-
+        let score = 30;
         const normalizedQuery = normalizeText(rawQuery);
-        if (normalizedQuery.length > 2 && haystack.includes(normalizedQuery)) {
-            score += entry ? 35 : 15;
-        }
-
-        if (entry && keywords.filter((k) => !STOP_WORDS.has(k)).every((kw) => haystack.includes(kw))) {
-            score += 30;
-        }
-
+        if (normalizedQuery.length > 2 && haystack.includes(normalizedQuery)) score += 40;
+        if (entry?.description) score += 25;
+        score += scoreImageKeywords(image, keywords);
         return score;
     }
 
@@ -888,20 +888,58 @@
     }
 
     async function searchDriveByKeywords(keywords) {
-        const merged = new Map();
         const terms = [...new Set(keywords.filter((term) => term.length > 1))];
-
+        if (!terms.length) return [];
+        // Cụm từ đầy đủ trước — tránh OR từng từ gây dư kết quả
         if (terms.length > 1) {
-            const combined = await searchDriveFullText(terms.join(' '));
-            combined.forEach((file) => merged.set(file.id, file));
+            const phrase = await searchDriveFullText(terms.join(' '));
+            if (phrase.length) return phrase;
+        }
+        return searchDriveFullText(terms[0]);
+    }
+
+    async function verifyMatchesWithVision(query, candidates, onProgress) {
+        const BATCH = 10;
+        const confirmed = new Map();
+        let lastSummary = '';
+
+        for (let i = 0; i < candidates.length; i += BATCH) {
+            const batch = candidates.slice(i, i + BATCH);
+            if (onProgress) {
+                onProgress(`AI xác minh ảnh ${i + 1}–${Math.min(i + BATCH, candidates.length)}/${candidates.length} (gemini-2.5-flash)...`);
+            }
+
+            const payloads = (await Promise.all(batch.map((image) => imageToBase64Payload(image)))).filter(Boolean);
+            if (!payloads.length) continue;
+
+            const response = await fetch(GEMINI_PROXY_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: 'match', query, images: payloads })
+            });
+
+            const parsed = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(typeof parsed.detail === 'string' ? parsed.detail.slice(0, 160) : 'AI match error');
+            }
+
+            (parsed.matches || []).forEach((match) => {
+                const image = candidates.find((item) => item.id === match.id);
+                if (!image) return;
+                const score = Number(match.score) || 0;
+                const prev = confirmed.get(match.id);
+                if (!prev || score > prev.score) {
+                    confirmed.set(match.id, { image, score, reason: match.reason || '' });
+                }
+            });
+            if (parsed.summary) lastSummary = parsed.summary;
         }
 
-        for (const term of terms) {
-            const files = await searchDriveFullText(term);
-            files.forEach((file) => merged.set(file.id, file));
-        }
+        const images = Array.from(confirmed.values())
+            .sort((a, b) => b.score - a.score)
+            .map((item) => item.image);
 
-        return Array.from(merged.values());
+        return { images, summary: lastSummary };
     }
 
     async function imageToBase64Payload(image) {
@@ -959,47 +997,92 @@
         }
 
         if (onProgress) {
-            onProgress(`Đang quét toàn bộ ${pool.length} ảnh trong Drive...`);
+            onProgress(`Lọc ứng viên trong ${pool.length} ảnh (khớp TẤT CẢ từ khóa)...`);
         }
 
         const driveResults = keywords.length
             ? await searchDriveByKeywords(keywords)
             : (query.trim() ? await searchDriveFullText(query) : []);
 
-        const driveBonus = new Map();
-        driveResults.forEach((image) => driveBonus.set(image.id, 25));
+        const driveIds = new Set(driveResults.map((image) => image.id));
 
-        const scored = pool
+        const prefiltered = pool
             .map((image) => {
                 const entry = imageIndex.get(image.id);
-                let score = scoreForSearch(image, entry, keywords, query) + (driveBonus.get(image.id) || 0);
-                if (entry && !keywords.length && query.trim()) {
-                    score = scoreForSearch(image, entry, normalizeText(query).split(/\s+/), query);
-                }
-                return { image, score, indexed: Boolean(entry?.description) };
+                const haystack = getSearchableText(image, entry);
+                const strict = passesStrictKeywordMatch(haystack, keywords, query);
+                const fromDrive = driveIds.has(image.id) && passesStrictKeywordMatch(
+                    normalizeText([image.name, entry?.description || '', ...(entry?.tags || [])].join(' ')),
+                    keywords,
+                    query
+                );
+                if (!strict && !fromDrive) return null;
+                return {
+                    image,
+                    score: scoreForSearch(image, entry, keywords, query) + (fromDrive ? 15 : 0),
+                    indexed: Boolean(entry?.description)
+                };
             })
-            .filter((item) => item.score > 0)
+            .filter(Boolean)
             .sort((a, b) => b.score - a.score || new Date(a.image.createdTime) - new Date(b.image.createdTime));
 
-        const results = scored.map((item) => item.image);
-        const indexedMatches = scored.filter((item) => item.indexed).length;
-
-        if (!results.length) {
+        if (!prefiltered.length) {
             const indexedCount = pool.filter(isImageIndexed).length;
             return {
                 mode: 'index',
                 images: [],
                 summary: indexedCount < pool.length
-                    ? `Chưa tìm thấy. AI đang học ${indexedCount}/${pool.length} ảnh — thử lại sau vài phút hoặc dùng từ khóa trong tên file.`
+                    ? `Chưa có ảnh khớp chặt "${query}". AI đã học ${indexedCount}/${pool.length} — đợi thêm hoặc thử cụm từ khác.`
                     : `Không có ảnh phù hợp "${query}" trong ${pool.length} ảnh.`
             };
         }
 
-        return {
-            mode: 'index',
-            images: results,
-            summary: `Tìm thấy ${results.length}/${pool.length} ảnh khớp "${query}"${indexedMatches ? ` (${indexedMatches} qua AI index)` : ''}.`
-        };
+        let candidates = prefiltered.map((item) => item.image);
+
+        if (candidates.length < 8) {
+            const expanded = new Map();
+            candidates.forEach((image) => expanded.set(image.id, image));
+            pool.filter(isImageIndexed).forEach((image) => expanded.set(image.id, image));
+            candidates = Array.from(expanded.values());
+            if (onProgress && candidates.length > prefiltered.length) {
+                onProgress(`Mở rộng ${candidates.length} ảnh đã học — AI gemini-2.5-flash sẽ xác minh...`);
+            }
+        }
+
+        if (!candidates.length) {
+            return { mode: 'index', images: [], summary: `Chưa có ảnh để AI xác minh cho "${query}".` };
+        }
+
+        try {
+            const verified = await verifyMatchesWithVision(query, candidates, onProgress);
+            if (verified.images.length) {
+                return {
+                    mode: 'vision',
+                    images: verified.images,
+                    summary: verified.summary || `AI chọn ${verified.images.length} ảnh khớp "${query}" (gemini-2.5-flash).`
+                };
+            }
+            return {
+                mode: 'vision',
+                images: [],
+                summary: verified.summary || `AI không thấy ảnh nào thật sự liên quan "${query}".`
+            };
+        } catch (error) {
+            console.warn('Vision verify failed:', error);
+            const fallback = prefiltered.filter((item) => item.indexed).map((item) => item.image);
+            if (fallback.length) {
+                return {
+                    mode: 'index',
+                    images: fallback,
+                    summary: `AI xác minh lỗi — hiển thị ${fallback.length} ảnh khớp index (chưa qua vision).`
+                };
+            }
+            return {
+                mode: 'error',
+                images: [],
+                summary: `AI lỗi: ${error.message || 'quota/key'}. Model: gemini-2.5-flash.`
+            };
+        }
     }
 
     function renderGallery(images, statusText) {
@@ -1186,7 +1269,7 @@
         try {
             const result = await searchImagesSmart(prompt, (text) => updateStatus(text, 'loading'));
 
-            const modeLabel = result.mode === 'index' ? 'AI Index' : 'Tìm kiếm';
+            const modeLabel = result.mode === 'vision' ? 'gemini-2.5-flash' : result.mode === 'index' ? 'AI Index' : 'Lỗi';
             renderGallery(result.images, `${result.images.length} ảnh · ${modeLabel}`);
 
             if (result.images.length > 0) {
