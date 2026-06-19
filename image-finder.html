@@ -2,7 +2,8 @@
 <html class="light" lang="vi">
 <head>
     <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+    <meta name="app-version" content="2.2-gpt-instant"/>
     <title>Klooker Media Image Finder - AI Index Search</title>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -459,7 +460,7 @@
         <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
                 <h2 class="text-lg font-bold truncate">Klooker Media Image Finder</h2>
-                <span class="ai-badge"><span class="material-symbols-outlined text-sm">psychology</span> GPT-4o-mini</span>
+                <span class="ai-badge"><span class="material-symbols-outlined text-sm">psychology</span> GPT-4o-mini v2.2</span>
             </div>
             <p class="text-sm text-on-surface-variant truncate" id="userEmail"></p>
         </div>
@@ -511,13 +512,14 @@
     const GOOGLE_CLIENT_ID = '42024300272-hqn54cffhmal5tuick7uqcerufpulhlp.apps.googleusercontent.com';
     const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
     const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email openid profile';
+    const APP_VERSION = '2.2-gpt-instant';
     const AI_PROXY_URL = 'https://gemini-proxy-two-mu.vercel.app/api/gemini';
     const STOP_WORDS = new Set(['tim', 'anh', 'image', 'photo', 'theo', 'trong', 'giup', 'cho', 'tooi', 'can']);
     const INDEX_DB_NAME = 'klooker-image-index-v1';
     const INDEX_STORE = 'entries';
     const INDEX_CONCURRENCY = 4;
     const GPT_MATCH_BATCH = 16;
-    const GPT_MAX_CANDIDATES = 32;
+    const GPT_MAX_CANDIDATES = 16;
 
     let allDriveImages = [];
     let displayedImages = [];
@@ -900,6 +902,25 @@
         return searchDriveFullText(terms[0]);
     }
 
+    function isInstantSearchQuery(query) {
+        const q = query.trim();
+        if (!q) return false;
+        // Không có khoảng trắng → tên file / mã: DSC, IMG_1150, anh1, menu
+        return !/\s/.test(q) && q.length <= 40;
+    }
+
+    function searchInstant(pool, query) {
+        const nq = normalizeText(query.trim());
+        return pool
+            .filter((image) => normalizeText(image.name).includes(nq))
+            .sort((a, b) => {
+                const an = normalizeText(a.name);
+                const bn = normalizeText(b.name);
+                if (an.startsWith(nq) !== bn.startsWith(nq)) return an.startsWith(nq) ? -1 : 1;
+                return an.localeCompare(bn);
+            });
+    }
+
     function rankCandidatesForGpt(pool, keywords, query) {
         const normalizedQuery = normalizeText(query);
 
@@ -926,7 +947,7 @@
                 score += scoreImageKeywords(image, keywords);
                 return { image, score, indexed: Boolean(entry?.description) };
             })
-            .filter((item) => item.score > 0 || item.indexed)
+            .filter((item) => item.score >= 12)
             .sort((a, b) => b.score - a.score || (b.indexed - a.indexed))
             .slice(0, GPT_MAX_CANDIDATES)
             .map((item) => item.image);
@@ -1022,6 +1043,17 @@
             ? filters.keywords
             : normalizeText(query).split(/\s+/).filter((word) => word.length > 1 && !STOP_WORDS.has(word));
 
+        if (isInstantSearchQuery(query)) {
+            const results = searchInstant(pool, query);
+            return {
+                mode: 'instant',
+                images: results,
+                summary: results.length
+                    ? `Tìm thấy ${results.length} ảnh tên có "${query}" · tức thì (không qua AI).`
+                    : `Không có file tên chứa "${query}" trong ${pool.length} ảnh.`
+            };
+        }
+
         if (!keywords.length && (filters.months.length || filters.year)) {
             const sorted = [...pool].sort((a, b) => new Date(a.createdTime) - new Date(b.createdTime));
             return {
@@ -1049,7 +1081,7 @@
         }
 
         if (onProgress) {
-            onProgress(`GPT-4o-mini kiểm tra ${candidates.length} ứng viên hay nhất (tối đa 2 lô)...`);
+            onProgress(`GPT-4o-mini kiểm tra tối đa ${Math.min(candidates.length, GPT_MAX_CANDIDATES)} ảnh...`);
         }
 
         try {
@@ -1260,7 +1292,7 @@
         try {
             const result = await searchImagesSmart(prompt, (text) => updateStatus(text, 'loading'));
 
-            const modeLabel = result.mode === 'vision' ? 'GPT-4o-mini' : result.mode === 'index' ? 'AI Index' : 'Lỗi';
+            const modeLabel = result.mode === 'instant' ? 'Tức thì' : result.mode === 'vision' ? 'GPT-4o-mini' : result.mode === 'index' ? 'AI Index' : 'Lỗi';
             renderGallery(result.images, `${result.images.length} ảnh · ${modeLabel}`);
 
             if (result.images.length > 0) {
