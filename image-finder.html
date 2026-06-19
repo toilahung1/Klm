@@ -569,7 +569,7 @@
 
             collected.push(...(data.files || []));
             pageToken = data.nextPageToken || '';
-        } while (pageToken && collected.length < 500);
+        } while (pageToken && collected.length < 5000);
 
         return collected;
     }
@@ -594,6 +594,45 @@
             .normalize('NFD')
             .replace(/[\u0300-\u036f]/g, '')
             .replace(/đ/g, 'd');
+    }
+
+    function parseQueryFilters(query) {
+        const normalized = normalizeText(query);
+        const filters = { months: [], keywords: [] };
+
+        const monthMap = {
+            'thang 1': 1, 'thang 2': 2, 'thang 3': 3, 'thang 4': 4,
+            'thang 5': 5, 'thang 6': 6, 'thang 7': 7, 'thang 8': 8,
+            'thang 9': 9, 'thang 10': 10, 'thang 11': 11, 'thang 12': 12,
+            'thang 01': 1, 'thang 02': 2, 'thang 03': 3, 'thang 04': 4,
+            'thang 05': 5, 'thang 06': 6, 'thang 07': 7, 'thang 08': 8,
+            'thang 09': 9,
+            'january': 1, 'february': 2, 'march': 3, 'april': 4, 'may': 5,
+            'june': 6, 'july': 7, 'august': 8, 'september': 9, 'october': 10,
+            'november': 11, 'december': 12
+        };
+
+        Object.entries(monthMap).forEach(([label, month]) => {
+            if (normalized.includes(label)) filters.months.push(month);
+        });
+
+        if (/\b05\b|\b5\b/.test(normalized) && (normalized.includes('thang') || normalized.includes('month'))) {
+            if (!filters.months.includes(5)) filters.months.push(5);
+        }
+
+        filters.keywords = normalized
+            .split(/\s+/)
+            .filter((word) => word.length > 1 && !['tim', 'anh', 'image', 'photo', 'theo', 'trong'].includes(word));
+
+        return filters;
+    }
+
+    function filterImagesByDate(images, months) {
+        if (!months.length) return images;
+        return images.filter((image) => {
+            const date = new Date(image.createdTime);
+            return months.includes(date.getMonth() + 1);
+        });
     }
 
     function scoreImage(image, query) {
@@ -650,7 +689,7 @@
     async function searchWithGemini(query, candidates) {
         if (!GEMINI_PROXY_URL) return null;
 
-        const catalog = candidates.slice(0, 120).map((image) => ({
+        const catalog = candidates.slice(0, 400).map((image) => ({
             id: image.id,
             name: image.name,
             created: image.createdTime
@@ -662,49 +701,78 @@
             body: JSON.stringify({ query, catalog })
         });
 
+        const parsed = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-            throw new Error(`AI proxy error: ${response.status}`);
+            const detail = parsed.detail || parsed.error || `HTTP ${response.status}`;
+            throw new Error(typeof detail === 'string' ? detail.slice(0, 200) : 'AI proxy error');
         }
 
-        const parsed = await response.json();
         const idSet = new Set(parsed.ids || []);
-        const ranked = candidates.filter((image) => idSet.has(image.id));
+        const ranked = (parsed.ids || [])
+            .map((id) => candidates.find((image) => image.id === id))
+            .filter(Boolean);
 
         return {
-            images: ranked,
-            summary: parsed.summary || `AI đã chọn ${ranked.length} ảnh phù hợp.`
+            images: ranked.length ? ranked : candidates.filter((image) => idSet.has(image.id)),
+            summary: parsed.summary || (ranked.length ? `AI đã chọn ${ranked.length} ảnh phù hợp.` : 'AI không tìm thấy ảnh phù hợp.')
         };
     }
 
     async function searchImagesSmart(query) {
-        const localResults = searchImagesLocal(query);
+        const filters = parseQueryFilters(query);
+        let pool = filterImagesByDate(allDriveImages, filters.months);
+
+        if (!pool.length && filters.months.length) {
+            return {
+                mode: 'local',
+                images: [],
+                summary: `Không có ảnh nào được tạo trong tháng ${filters.months.join(', ')}.`
+            };
+        }
+
+        if (!pool.length) pool = allDriveImages;
+
+        const localResults = searchImagesLocal(query).filter((image) => pool.some((item) => item.id === image.id));
         const fullTextResults = await searchDriveFullText(query);
+        const fullTextInPool = fullTextResults.filter((image) => pool.some((item) => item.id === image.id));
 
         const merged = new Map();
-        [...localResults, ...fullTextResults].forEach((image) => merged.set(image.id, image));
-        let candidates = Array.from(merged.values());
+        [...localResults, ...fullTextInPool].forEach((image) => merged.set(image.id, image));
 
-        if (!candidates.length) {
-            candidates = allDriveImages.slice(0, 120);
+        let candidates = Array.from(merged.values());
+        if (candidates.length < 20) {
+            const scored = pool
+                .map((image) => ({ image, score: scoreImage(image, query) }))
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 400)
+                .map((item) => item.image);
+            candidates = scored.length ? scored : pool.slice(0, 400);
+        } else {
+            candidates = candidates.slice(0, 400);
         }
 
         try {
-            const aiResult = await searchWithGemini(query, candidates.length ? candidates : allDriveImages);
-            if (aiResult && aiResult.images.length) {
-                return { mode: 'ai', ...aiResult };
-            }
+            const aiResult = await searchWithGemini(query, candidates);
+            return { mode: 'ai', ...aiResult };
         } catch (error) {
-            console.warn('AI search fallback:', error);
-        }
+            console.warn('AI search failed:', error);
 
-        const fallback = candidates.length ? candidates : localResults;
-        return {
-            mode: 'local',
-            images: fallback.slice(0, 24),
-            summary: fallback.length
-                ? `Tìm thấy ${fallback.length} ảnh theo tên file và nội dung Drive.`
-                : 'Không tìm thấy ảnh phù hợp.'
-        };
+            const strongLocal = localResults.filter((image) => scoreImage(image, query) >= 12);
+            if (strongLocal.length) {
+                return {
+                    mode: 'local',
+                    images: strongLocal,
+                    summary: `AI tạm không khả dụng. Hiển thị ${strongLocal.length} ảnh khớp tên file.`
+                };
+            }
+
+            return {
+                mode: 'error',
+                images: [],
+                summary: `AI không phản hồi (${error.message || 'lỗi quota/key'}). Kiểm tra API key Gemini hoặc thử lại sau.`
+            };
+        }
     }
 
     function renderGallery(images, statusText) {
@@ -889,12 +957,12 @@
         try {
             const result = await searchImagesSmart(prompt);
 
-            renderGallery(result.images, `${result.images.length} ảnh · ${result.mode === 'ai' ? 'AI Gemini' : 'Tìm thông minh'}`);
+            renderGallery(result.images, `${result.images.length} ảnh · ${result.mode === 'ai' ? 'AI Gemini' : result.mode === 'error' ? 'Lỗi AI' : 'Tìm theo tên file'}`);
 
             if (result.images.length > 0) {
-                updateStatus(result.summary, 'success');
+                updateStatus(result.summary, result.mode === 'error' ? 'error' : 'success');
             } else {
-                updateStatus(`Không thấy ảnh phù hợp "${prompt}". Thử mô tả khác hoặc bấm "Xem tất cả".`, 'error');
+                updateStatus(result.summary || `Không thấy ảnh phù hợp "${prompt}". Thử mô tả khác hoặc bấm "Xem tất cả".`, 'error');
             }
         } catch (error) {
             console.error('Search error:', error);
