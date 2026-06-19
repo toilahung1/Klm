@@ -511,10 +511,8 @@
     const GOOGLE_CLIENT_ID = '42024300272-hqn54cffhmal5tuick7uqcerufpulhlp.apps.googleusercontent.com';
     const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
     const SCOPES = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/userinfo.email openid profile';
-    const GEMINI_MODEL = 'gemini-2.0-flash';
-    const GEMINI_KEY_STORAGE = 'klooker_gemini_api_key';
-    // Key Gemini dựng sẵn của hệ thống (chủ web điền). Để trống = chỉ dùng tìm kiếm thông minh không cần AI.
-    const GEMINI_API_KEY = '';
+    // Proxy AI server-side (Vercel) — giữ key an toàn, khách không cần nhập gì.
+    const GEMINI_PROXY_URL = 'https://gemini-proxy-two-mu.vercel.app/api/gemini';
 
     let allDriveImages = [];
     let displayedImages = [];
@@ -574,12 +572,6 @@
         } while (pageToken && collected.length < 500);
 
         return collected;
-    }
-
-    function getGeminiApiKey() {
-        // Ưu tiên key dựng sẵn của hệ thống; nếu trống thì dùng key người dùng tự lưu (nếu có).
-        return (typeof GEMINI_API_KEY === 'string' && GEMINI_API_KEY) ||
-            localStorage.getItem(GEMINI_KEY_STORAGE) || '';
     }
 
     function getThumbnailUrl(image, size = 300) {
@@ -656,8 +648,7 @@
     }
 
     async function searchWithGemini(query, candidates) {
-        const apiKey = getGeminiApiKey();
-        if (!apiKey) return null;
+        if (!GEMINI_PROXY_URL) return null;
 
         const catalog = candidates.slice(0, 120).map((image) => ({
             id: image.id,
@@ -665,38 +656,17 @@
             created: image.createdTime
         }));
 
-        const prompt = `Bạn là trợ lý tìm ảnh trong Google Drive.
-Người dùng hỏi: "${query}"
-
-Danh sách ảnh (JSON):
-${JSON.stringify(catalog)}
-
-Hãy chọn các ảnh phù hợp nhất với mô tả của người dùng (theo tên file, ngữ cảnh, từ khóa tiếng Việt/Anh).
-Trả về JSON thuần dạng: {"ids":["id1","id2"], "summary":"giải thích ngắn bằng tiếng Việt"}
-Giới hạn tối đa 24 id, xếp theo độ liên quan.`;
-
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: {
-                        temperature: 0.2,
-                        responseMimeType: 'application/json'
-                    }
-                })
-            }
-        );
+        const response = await fetch(GEMINI_PROXY_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, catalog })
+        });
 
         if (!response.ok) {
-            throw new Error(`Gemini API error: ${response.status}`);
+            throw new Error(`AI proxy error: ${response.status}`);
         }
 
-        const data = await response.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-        const parsed = JSON.parse(text);
+        const parsed = await response.json();
         const idSet = new Set(parsed.ids || []);
         const ranked = candidates.filter((image) => idSet.has(image.id));
 
