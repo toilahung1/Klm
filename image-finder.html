@@ -102,18 +102,76 @@
         .chat-container {
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            min-height: 100vh;
+            padding-top: 72px;
+            background: #f8f9fb;
+        }
+
+        .app-toolbar {
+            position: sticky;
+            top: 72px;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 16px 24px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid #e1e2e4;
+        }
+
+        .search-section {
+            padding: 20px 24px;
+            background: white;
+            border-bottom: 1px solid #e1e2e4;
+        }
+
+        .status-banner {
+            margin-top: 12px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: #f2f4f6;
+            color: #434655;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .status-banner.error {
+            background: #ffede6;
+            color: #943700;
+        }
+
+        .status-banner.success {
+            background: #eef2ff;
+            color: #004ac6;
+        }
+
+        .gallery-section {
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .gallery-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 24px;
             background: white;
         }
 
         .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            min-height: 0;
+            display: none;
+        }
+
+        .chat-input-area {
+            padding: 0;
+            background: transparent;
+            border: none;
         }
 
         .message {
@@ -155,10 +213,14 @@
             }
         }
 
-        .chat-input-area {
-            padding: 20px;
-            background: white;
-            border-top: 1px solid #e1e2e4;
+        .search-form {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .search-form input {
+            flex: 1;
         }
 
         .loading-spinner {
@@ -261,48 +323,35 @@
         }
 
         .workspace {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 0;
+            display: flex;
+            flex-direction: column;
             flex: 1;
             min-height: 0;
-            margin-top: 3rem;
-        }
-
-        @media (min-width: 1024px) {
-            .workspace {
-                grid-template-columns: 380px 1fr;
-            }
         }
 
         .chat-panel {
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-            border-right: 1px solid #e1e2e4;
-            background: linear-gradient(180deg, #f8f9fb 0%, #edeef0 100%);
+            display: contents;
         }
 
         .gallery-panel {
             display: flex;
             flex-direction: column;
+            flex: 1;
             min-height: 0;
-            background: white;
+            background: #f8f9fb;
         }
 
         .gallery-header {
-            padding: 16px 20px;
-            border-bottom: 1px solid #e1e2e4;
-            background: #f8f9fb;
+            display: none;
         }
 
         .gallery-grid {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
+            padding: 24px;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 16px;
             align-content: start;
         }
 
@@ -316,11 +365,12 @@
         .gallery-item {
             position: relative;
             aspect-ratio: 1;
-            border-radius: 12px;
+            border-radius: 16px;
             overflow: hidden;
             cursor: pointer;
-            background: #f0f0f0;
+            background: #e1e2e4;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
         }
 
         .gallery-item:hover {
@@ -403,62 +453,52 @@
     </div>
 </div>
 
-<!-- Chat Screen -->
-<div id="chatScreen" class="hidden chat-container pt-20">
-    <div class="bg-white border-b border-surface-container flex items-center justify-between px-6 py-4 fixed top-20 left-0 right-0 z-30">
-        <div>
-            <div class="flex items-center gap-2">
-                <h2 class="text-lg font-bold">Klooker Media Image Finder</h2>
+<!-- App Screen -->
+<div id="chatScreen" class="hidden chat-container">
+    <div class="app-toolbar">
+        <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+                <h2 class="text-lg font-bold truncate">Klooker Media Image Finder</h2>
                 <span class="ai-badge"><span class="material-symbols-outlined text-sm">auto_awesome</span> Gemini AI</span>
             </div>
-            <p class="text-sm text-on-surface-variant" id="userEmail"></p>
+            <p class="text-sm text-on-surface-variant truncate" id="userEmail"></p>
         </div>
-        <button onclick="logout()" class="text-slate-600 hover:text-primary p-2 rounded-full hover:bg-surface-container-low transition-colors" title="Đăng xuất">
+        <button onclick="logout()" class="shrink-0 text-slate-600 hover:text-primary p-2 rounded-full hover:bg-surface-container-low transition-colors" title="Đăng xuất">
             <span class="material-symbols-outlined">logout</span>
         </button>
     </div>
 
+    <div class="search-section">
+        <form id="chatForm" class="search-form">
+            <input
+                type="text"
+                id="promptInput"
+                placeholder="Mô tả ảnh cần tìm: sự kiện tết, team, logo..."
+                class="w-full bg-surface-container-low border-none rounded-full px-6 py-3.5 focus:ring-2 focus:ring-primary/20 transition-all text-sm"
+                autocomplete="off"
+            />
+            <button
+                type="submit"
+                class="shrink-0 bg-primary text-on-primary px-5 py-3.5 rounded-full hover:opacity-90 transition-opacity flex items-center gap-2 font-semibold text-sm"
+                id="sendBtn"
+            >
+                <span class="material-symbols-outlined">search</span>
+                <span class="hidden sm:inline">Tìm</span>
+            </button>
+        </form>
+        <div id="statusBanner" class="status-banner hidden"></div>
+    </div>
+
     <div class="workspace">
-        <div class="chat-panel">
-            <div class="chat-messages">
-                <div class="message bot">
-                    <div class="message-bubble">
-                        👋 Đăng nhập Gmail xong, ảnh Drive sẽ hiện bên phải. Mô tả ảnh bạn cần — AI sẽ tìm giúp!
-                    </div>
-                </div>
-            </div>
-
-            <div class="chat-input-area">
-                <form id="chatForm" class="flex gap-3">
-                    <input
-                        type="text"
-                        id="promptInput"
-                        placeholder="VD: ảnh sự kiện tết, team quay phim, logo công ty..."
-                        class="flex-1 bg-surface-container-low border-none rounded-full px-6 py-3 focus:ring-2 focus:ring-primary/20 transition-all"
-                        autocomplete="off"
-                    />
-                    <button
-                        type="submit"
-                        class="bg-primary text-on-primary px-6 py-3 rounded-full hover:opacity-90 transition-opacity flex items-center gap-2 font-semibold"
-                        id="sendBtn"
-                    >
-                        <span class="material-symbols-outlined">send</span>
-                    </button>
-                </form>
-            </div>
-        </div>
-
         <div class="gallery-panel">
-            <div class="gallery-header">
-                <div class="flex items-center justify-between gap-3">
-                    <div>
-                        <h3 class="font-bold text-sm">Thư viện Google Drive</h3>
-                        <p class="text-xs text-on-surface-variant" id="galleryStatus">Chưa tải ảnh</p>
-                    </div>
-                    <button type="button" id="showAllBtn" class="text-xs font-semibold text-primary hover:opacity-80 hidden">
-                        Xem tất cả
-                    </button>
+            <div class="gallery-toolbar">
+                <div>
+                    <h3 class="font-bold text-sm">Thư viện Google Drive</h3>
+                    <p class="text-xs text-on-surface-variant" id="galleryStatus">Chưa tải ảnh</p>
                 </div>
+                <button type="button" id="showAllBtn" class="text-xs font-semibold text-primary hover:opacity-80 hidden px-3 py-2 rounded-full bg-primary/10">
+                    Xem tất cả
+                </button>
             </div>
             <div id="driveGallery" class="gallery-grid">
                 <div class="gallery-empty">Đăng nhập Gmail để xem ảnh trong Drive</div>
@@ -847,27 +887,23 @@ Giới hạn tối đa 24 id, xếp theo độ liên quan.`;
 
         isLoadingDrive = true;
         document.getElementById('galleryStatus').textContent = 'Đang tải ảnh...';
-        addMessage('⏳ Đang quét ảnh trong Google Drive...', 'bot', true);
+        updateStatus('Đang quét ảnh trong Google Drive...', 'loading');
 
         try {
             allDriveImages = await fetchDriveImages(currentAccessToken);
-            removeLastMessage();
 
             renderGallery(allDriveImages, `${allDriveImages.length} ảnh trong Drive`);
 
             if (allDriveImages.length > 0) {
-                addMessage(`📁 Đã tải ${allDriveImages.length} ảnh từ Google Drive. Xem gallery bên phải!`, 'bot');
+                updateStatus(`Đã tải ${allDriveImages.length} ảnh. Gõ mô tả ở trên để AI tìm giúp.`, 'success');
             } else {
-                addMessage('📁 Chưa thấy ảnh nào trong Google Drive của bạn. Hãy thử upload ảnh (.jpg, .png...) vào Drive rồi bấm đăng xuất → đăng nhập lại.', 'bot');
-                renderGallery([], '0 ảnh · Drive trống hoặc chưa có file ảnh');
+                updateStatus('Chưa thấy ảnh trong Drive. Upload ảnh (.jpg, .png) rồi đăng nhập lại.', 'error');
+                renderGallery([], '0 ảnh');
             }
-
-            addMessage('🤖 Mô tả ảnh bạn cần — AI Gemini sẽ tìm giúp (VD: "ảnh team tết", "poster sự kiện")', 'bot');
         } catch (error) {
             console.error('Error loading Drive images:', error);
-            removeLastMessage();
             const message = getDriveErrorMessage(error);
-            addMessage(`❌ ${message}`, 'bot');
+            updateStatus(message, 'error');
             document.getElementById('galleryStatus').textContent = 'Lỗi tải ảnh';
             document.getElementById('driveGallery').innerHTML = `<div class="gallery-empty">${message}</div>`;
         } finally {
@@ -877,7 +913,7 @@ Giới hạn tối đa 24 id, xếp theo độ liên quan.`;
 
     document.getElementById('showAllBtn').addEventListener('click', () => {
         renderGallery(allDriveImages, `${allDriveImages.length} ảnh trong Drive`);
-        addMessage('📂 Đang hiển thị toàn bộ ảnh trong Drive.', 'bot');
+        updateStatus(`Hiển thị toàn bộ ${allDriveImages.length} ảnh.`, 'success');
     });
 
     document.getElementById('chatForm').addEventListener('submit', async (e) => {
@@ -886,59 +922,50 @@ Giới hạn tối đa 24 id, xếp theo độ liên quan.`;
         const prompt = document.getElementById('promptInput').value.trim();
         if (!prompt || !allDriveImages.length) return;
 
-        addMessage(prompt, 'user');
-        document.getElementById('promptInput').value = '';
         document.getElementById('sendBtn').disabled = true;
-
-        addMessage('🤖 AI đang phân tích và tìm ảnh phù hợp...', 'bot', true);
+        updateStatus(`Đang tìm: "${prompt}"...`, 'loading');
 
         try {
             const result = await searchImagesSmart(prompt);
-            removeLastMessage();
 
             renderGallery(result.images, `${result.images.length} ảnh · ${result.mode === 'ai' ? 'AI Gemini' : 'Tìm thông minh'}`);
 
             if (result.images.length > 0) {
-                addMessage(`✅ ${result.summary}`, 'bot');
+                updateStatus(result.summary, 'success');
             } else {
-                addMessage(`😕 Không thấy ảnh phù hợp "${prompt}". Thử mô tả khác hoặc bấm "Xem tất cả".`, 'bot');
+                updateStatus(`Không thấy ảnh phù hợp "${prompt}". Thử mô tả khác hoặc bấm "Xem tất cả".`, 'error');
             }
         } catch (error) {
             console.error('Search error:', error);
-            removeLastMessage();
-            addMessage('Có lỗi khi tìm kiếm. Vui lòng thử lại.', 'bot');
+            updateStatus('Có lỗi khi tìm kiếm. Vui lòng thử lại.', 'error');
         }
 
+        document.getElementById('promptInput').value = '';
         document.getElementById('sendBtn').disabled = false;
         document.getElementById('promptInput').focus();
     });
 
-    function addMessage(text, sender = 'bot', isLoading = false) {
-        const messagesDiv = document.querySelector('.chat-messages');
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${sender}`;
-        
-        const bubble = document.createElement('div');
-        bubble.className = 'message-bubble';
-        
-        if (isLoading) {
-            bubble.innerHTML = `<div class="flex items-center gap-2"><div class="loading-spinner"></div> ${text}</div>`;
-        } else {
-            bubble.textContent = text;
+    function updateStatus(text, type = 'info') {
+        const banner = document.getElementById('statusBanner');
+        if (!text) {
+            banner.classList.add('hidden');
+            banner.textContent = '';
+            banner.className = 'status-banner hidden';
+            return;
         }
-        
-        messageDiv.appendChild(bubble);
-        messagesDiv.appendChild(messageDiv);
-        
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+        banner.textContent = text;
+        banner.className = 'status-banner';
+        if (type === 'error') banner.classList.add('error');
+        if (type === 'success') banner.classList.add('success');
+        banner.classList.remove('hidden');
     }
 
-    function removeLastMessage() {
-        const messages = document.querySelectorAll('.message');
-        if (messages.length > 0) {
-            messages[messages.length - 1].remove();
-        }
+    function addMessage(text, sender = 'bot', isLoading = false) {
+        updateStatus(text, isLoading ? 'loading' : sender === 'user' ? 'success' : 'info');
     }
+
+    function removeLastMessage() {}
 
     function addImageGallery(images, searchQuery) {
         const messagesDiv = document.querySelector('.chat-messages');
@@ -1033,13 +1060,7 @@ Giới hạn tối đa 24 id, xếp theo độ liên quan.`;
         document.getElementById('galleryStatus').textContent = 'Chưa tải ảnh';
         document.getElementById('showAllBtn').classList.add('hidden');
         document.getElementById('driveGallery').innerHTML = '<div class="gallery-empty">Đăng nhập Gmail để xem ảnh trong Drive</div>';
-        document.querySelector('.chat-messages').innerHTML = `
-            <div class="message bot">
-                <div class="message-bubble">
-                    👋 Đăng nhập Gmail xong, ảnh Drive sẽ hiện bên phải. Mô tả ảnh bạn cần — AI sẽ tìm giúp!
-                </div>
-            </div>
-        `;
+        updateStatus('');
 
         renderGoogleLoginButton();
     }
