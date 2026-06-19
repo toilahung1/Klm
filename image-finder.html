@@ -519,7 +519,7 @@
     const INDEX_STORE = 'entries';
     const INDEX_CONCURRENCY = 4;
     const GPT_MATCH_BATCH = 16;
-    const GPT_MAX_CANDIDATES = 16;
+    const GPT_MAX_CANDIDATES = 80; // 5 batches × 16 ảnh
 
     let allDriveImages = [];
     let displayedImages = [];
@@ -985,8 +985,17 @@
                 onProgress(`GPT-4o-mini xác minh lô ${batchNum}/${totalBatches} (${batch.length} ảnh)...`);
             }
 
-            const payloads = (await Promise.all(batch.map((image) => imageToBase64Payload(image, 320)))).filter(Boolean);
-            if (!payloads.length) continue;
+            const rawPayloads = (await Promise.all(batch.map((image) => imageToBase64Payload(image, 320)))).filter(Boolean);
+            if (!rawPayloads.length) continue;
+
+            // Dùng index số [1],[2],... làm ID để GPT không copy sai Drive file ID dài
+            const batchMap = new Map(); // index string → Drive image object
+            const payloads = rawPayloads.map((p, idx) => {
+                const seqId = String(idx + 1);
+                const origImage = batch.find((img) => img.id === p.id);
+                batchMap.set(seqId, origImage || null);
+                return { ...p, id: seqId };
+            });
 
             const response = await fetch(AI_PROXY_URL, {
                 method: 'POST',
@@ -1000,12 +1009,12 @@
             }
 
             (parsed.matches || []).forEach((match) => {
-                const image = candidates.find((item) => item.id === match.id);
+                const image = batchMap.get(String(match.id));
                 if (!image) return;
                 const score = Number(match.score) || 0;
-                const prev = confirmed.get(match.id);
+                const prev = confirmed.get(image.id);
                 if (!prev || score > prev.score) {
-                    confirmed.set(match.id, { image, score, reason: match.reason || '' });
+                    confirmed.set(image.id, { image, score, reason: match.reason || '' });
                 }
             });
             if (parsed.summary) lastSummary = parsed.summary;
