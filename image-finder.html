@@ -519,7 +519,7 @@
     const INDEX_STORE = 'entries';
     const INDEX_CONCURRENCY = 4;
     const GPT_MATCH_BATCH = 16;
-    const GPT_MAX_CANDIDATES = 80; // 5 batches × 16 ảnh
+    const GPT_UNINDEXED_CAP = 32; // Giới hạn ảnh chưa index gửi GPT (không có mô tả → ít thông tin hơn)
 
     let allDriveImages = [];
     let displayedImages = [];
@@ -925,52 +925,60 @@
 
     function rankCandidatesForGpt(pool, keywords, query) {
         const normalizedQuery = normalizeText(query);
-        const indexedImages = pool.filter((image) => Boolean(imageIndex.get(image.id)?.description));
 
-        const scored = pool
-            .map((image) => {
-                const entry = imageIndex.get(image.id);
-                const haystack = getSearchableText(image, entry);
-                let score = 0;
+        const scored = pool.map((image) => {
+            const entry = imageIndex.get(image.id);
+            const haystack = getSearchableText(image, entry);
+            let score = 0;
 
-                if (passesStrictKeywordMatch(haystack, keywords, query)) score += 100;
-                if (normalizedQuery.length > 2 && haystack.includes(normalizedQuery)) score += 60;
+            if (passesStrictKeywordMatch(haystack, keywords, query)) score += 100;
+            if (normalizedQuery.length > 2 && haystack.includes(normalizedQuery)) score += 60;
 
+            keywords.forEach((kw) => {
+                if (haystack.includes(kw)) score += 12;
+            });
+
+            (entry?.tags || []).forEach((tag) => {
+                const t = normalizeText(tag);
                 keywords.forEach((kw) => {
-                    if (haystack.includes(kw)) score += 12;
+                    if (t.includes(kw) || kw.includes(t)) score += 10;
                 });
+            });
 
-                (entry?.tags || []).forEach((tag) => {
-                    const t = normalizeText(tag);
-                    keywords.forEach((kw) => {
-                        if (t.includes(kw) || kw.includes(t)) score += 10;
-                    });
-                });
+            score += scoreImageKeywords(image, keywords);
+            if (entry?.description) score += 5;
+            return { image, score, indexed: Boolean(entry?.description) };
+        });
 
-                score += scoreImageKeywords(image, keywords);
-                if (entry?.description) score += 5;
-                return { image, score, indexed: Boolean(entry?.description) };
-            })
-            .filter((item) => item.score > 0)
-            .sort((a, b) => b.score - a.score || (b.indexed - a.indexed));
+        // Ảnh đã index có score > 0: gửi tất cả (không giới hạn)
+        const indexedWithScore = scored
+            .filter((item) => item.indexed && item.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .map((item) => item.image);
 
-        const topScored = scored.slice(0, GPT_MAX_CANDIDATES).map((item) => item.image);
+        // Ảnh chưa index có score > 0: giới hạn GPT_UNINDEXED_CAP
+        const unindexedWithScore = scored
+            .filter((item) => !item.indexed && item.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, GPT_UNINDEXED_CAP)
+            .map((item) => item.image);
 
-        // Nếu không đủ từ score, bổ sung ảnh đã index để GPT nhìn trực tiếp
-        if (topScored.length < GPT_MAX_CANDIDATES && indexedImages.length > 0) {
-            const topIds = new Set(topScored.map((img) => img.id));
-            const extras = indexedImages
-                .filter((img) => !topIds.has(img.id))
-                .slice(0, GPT_MAX_CANDIDATES - topScored.length);
-            return [...topScored, ...extras];
+        const candidates = [...indexedWithScore, ...unindexedWithScore];
+
+        // Fallback: không có gì khớp → gửi toàn bộ ảnh đã index để GPT nhìn trực tiếp
+        if (candidates.length === 0) {
+            const allIndexed = scored
+                .filter((item) => item.indexed)
+                .sort((a, b) => b.score - a.score)
+                .map((item) => item.image);
+            if (allIndexed.length > 0) return allIndexed;
+            // Không có index nào → gửi mẫu ảnh chưa index
+            return scored
+                .slice(0, GPT_UNINDEXED_CAP)
+                .map((item) => item.image);
         }
 
-        // Fallback tuyệt đối: nếu vẫn rỗng, gửi ảnh đã index để GPT xem
-        if (topScored.length === 0 && indexedImages.length > 0) {
-            return indexedImages.slice(0, GPT_MAX_CANDIDATES);
-        }
-
-        return topScored;
+        return candidates;
     }
 
     async function verifyMatchesWithVision(query, candidates, onProgress) {
@@ -1110,7 +1118,8 @@
         }
 
         if (onProgress) {
-            onProgress(`GPT-4o-mini kiểm tra ${candidates.length} ảnh...`);
+            const batches = Math.ceil(candidates.length / GPT_MATCH_BATCH);
+            onProgress(`GPT-4o-mini kiểm tra ${candidates.length} ảnh (${batches} lô)...`);
         }
 
         try {
