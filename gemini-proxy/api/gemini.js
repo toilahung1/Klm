@@ -3,9 +3,8 @@ const ALLOWED_ORIGINS = [
     'https://www.klookermediavn.com'
 ];
 
-// Free tier, vision + tiếng Việt tốt hơn flash-lite
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-const MAX_VISION_BATCH = Number(process.env.MAX_VISION_BATCH || 10);
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const MAX_MATCH_BATCH = Number(process.env.MAX_MATCH_BATCH || 16);
 
 function applyCors(req, res) {
     const origin = req.headers.origin;
@@ -31,40 +30,45 @@ async function readJsonBody(req) {
     });
 }
 
-async function callGemini(apiKey, contents) {
-    return fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`,
-        {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: contents }],
-                generationConfig: {
-                    temperature: 0.1,
-                    responseMimeType: 'application/json'
-                }
-            })
-        }
-    );
-}
+async function callOpenAI(apiKey, content, maxTokens = 800) {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: OPENAI_MODEL,
+            temperature: 0.1,
+            max_tokens: maxTokens,
+            response_format: { type: 'json_object' },
+            messages: [{ role: 'user', content }]
+        })
+    });
 
-function parseGeminiJson(text) {
+    if (!response.ok) {
+        const detail = await response.text();
+        const err = new Error('OpenAI API error');
+        err.status = response.status;
+        err.detail = detail;
+        throw err;
+    }
+
+    const data = await response.json();
+    const text = data?.choices?.[0]?.message?.content || '{}';
     try { return JSON.parse(text); }
     catch { return {}; }
 }
 
-async function geminiRequest(apiKey, parts) {
-    const geminiRes = await callGemini(apiKey, parts);
-    if (!geminiRes.ok) {
-        const detail = await geminiRes.text();
-        const err = new Error('Gemini API error');
-        err.status = geminiRes.status;
-        err.detail = detail;
-        throw err;
-    }
-    const data = await geminiRes.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    return parseGeminiJson(text);
+function imageContentPart(item, detail = 'low') {
+    const mime = item.mimeType || 'image/jpeg';
+    return {
+        type: 'image_url',
+        image_url: {
+            url: `data:${mime};base64,${item.data}`,
+            detail
+        }
+    };
 }
 
 async function handleDescribe(apiKey, image) {
@@ -72,18 +76,15 @@ async function handleDescribe(apiKey, image) {
         return { description: '', tags: [] };
     }
 
-    const parsed = await geminiRequest(apiKey, [{
-        text: `Mô tả ảnh để tìm kiếm thư viện Drive. File: "${image.name || ''}".
-
+    const parsed = await callOpenAI(apiKey, [
+        {
+            type: 'text',
+            text: `Mô tả ảnh để tìm kiếm thư viện Google Drive. File: "${image.name || ''}".
 Trả JSON: {"description":"1-2 câu tiếng Việt","tags":["tag1","tag2"]}
-
-Tags phải gồm: chủ đề chính, text/chữ trong ảnh (nếu có), loại nội dung (quảng cáo, menu, sự kiện, giấy tờ, screenshot...).`
-    }, {
-        inline_data: {
-            mime_type: image.mimeType || 'image/jpeg',
-            data: image.data
-        }
-    }]);
+Ghi chủ đề, chữ trong ảnh, loại (quảng cáo, menu, sự kiện, giấy tờ, screenshot, giảm cân, team...).`
+        },
+        imageContentPart(image, 'low')
+    ], 400);
 
     return {
         id: image.id,
@@ -93,32 +94,31 @@ Tags phải gồm: chủ đề chính, text/chữ trong ảnh (nếu có), loạ
 }
 
 async function handleMatch(apiKey, query, images) {
-    const safeImages = images.filter((item) => item?.id && item?.data).slice(0, MAX_VISION_BATCH);
+    const safeImages = images.filter((item) => item?.id && item?.data).slice(0, MAX_MATCH_BATCH);
     if (!safeImages.length) {
-        return { matches: [], summary: 'Khong co anh de xac minh.' };
+        return { matches: [], summary: 'Khong co anh de xac minh.', model: OPENAI_MODEL };
     }
 
-    const parts = [{
+    const content = [{
+        type: 'text',
         text: `Người dùng tìm: "${query}"
 
-Xem ${safeImages.length} ảnh dưới đây. CHỈ chọn ảnh thật sự liên quan đến mô tả.
-LOẠI BỎ: giấy tờ, ghi chú tay, screenshot cuộc gọi, bảng biểu không liên quan, ảnh chỉ vì có 1 từ trùng ngẫu nhiên.
+Xem ${safeImages.length} ảnh. CHỈ chọn ảnh THẬT SỰ liên quan (ví dụ "giảm béo" = quảng cáo giảm cân, gym, dinh dưỡng — KHÔNG phải ghi chú tay, cuộc gọi, bảng biểu lạ).
 
-Trả JSON: {"matches":[{"id":"...","score":7-10,"reason":"ngắn"}],"summary":"..."}
-Chỉ id score >= 7. Không khớp thì matches rỗng.`
+Mỗi ảnh có id trong text ngay trước ảnh đó.
+Trả JSON: {"matches":[{"id":"...","score":7-10,"reason":"ngắn tiếng Việt"}],"summary":"..."}
+Chỉ score >= 7. Không khớp → matches: [].`
     }];
 
     safeImages.forEach((item, index) => {
-        parts.push({ text: `[${index + 1}] id=${item.id} file="${item.name}"` });
-        parts.push({
-            inline_data: {
-                mime_type: item.mimeType || 'image/jpeg',
-                data: item.data
-            }
+        content.push({
+            type: 'text',
+            text: `[${index + 1}] id=${item.id} file="${item.name || ''}"`
         });
+        content.push(imageContentPart(item, 'low'));
     });
 
-    const parsed = await geminiRequest(apiKey, parts);
+    const parsed = await callOpenAI(apiKey, content, 1200);
     const matches = Array.isArray(parsed.matches)
         ? parsed.matches.filter((m) => m?.id && Number(m.score) >= 7)
         : [];
@@ -126,7 +126,7 @@ Chỉ id score >= 7. Không khớp thì matches rỗng.`
     return {
         matches,
         summary: parsed.summary || '',
-        model: GEMINI_MODEL
+        model: OPENAI_MODEL
     };
 }
 
@@ -144,11 +144,11 @@ module.exports = async function handler(req, res) {
         return res.end(JSON.stringify({ error: 'Method not allowed' }));
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
         res.statusCode = 500;
         res.setHeader('Content-Type', 'application/json');
-        return res.end(JSON.stringify({ error: 'Server chua cau hinh GEMINI_API_KEY' }));
+        return res.end(JSON.stringify({ error: 'Server chua cau hinh OPENAI_API_KEY' }));
     }
 
     try {
@@ -158,7 +158,7 @@ module.exports = async function handler(req, res) {
         if (body.mode === 'describe' && body.image) {
             const result = await handleDescribe(apiKey, body.image);
             res.statusCode = 200;
-            return res.end(JSON.stringify({ ...result, model: GEMINI_MODEL }));
+            return res.end(JSON.stringify({ ...result, model: OPENAI_MODEL }));
         }
 
         if (body.mode === 'match' && body.query && Array.isArray(body.images) && body.images.length) {
@@ -173,7 +173,7 @@ module.exports = async function handler(req, res) {
         res.setHeader('Content-Type', 'application/json');
         if (error.status) {
             res.statusCode = 502;
-            return res.end(JSON.stringify({ error: error.message, status: error.status, detail: error.detail, model: GEMINI_MODEL }));
+            return res.end(JSON.stringify({ error: error.message, status: error.status, detail: error.detail, model: OPENAI_MODEL }));
         }
         res.statusCode = 500;
         return res.end(JSON.stringify({ error: error.message || 'Loi xu ly' }));
