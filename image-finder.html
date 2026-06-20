@@ -778,13 +778,21 @@
     <div class="workspace">
         <div class="gallery-panel">
             <div class="gallery-toolbar">
-                <div>
-                    <h3 class="font-bold text-sm">Thư viện Google Drive</h3>
-                    <p class="text-xs text-on-surface-variant" id="galleryStatus">Chưa tải ảnh</p>
+                <div style="display:flex;align-items:center;gap:0;min-width:0;flex:1;">
+                    <!-- Breadcrumb back button — hidden in root folder view -->
+                    <button type="button" id="backBtn"
+                        class="hidden items-center gap-1 mr-3 text-sm font-semibold text-primary hover:opacity-80 shrink-0"
+                        style="display:none;">
+                        <span class="material-symbols-outlined" style="font-size:18px;">arrow_back</span>
+                        <span id="backBtnLabel">Tất cả thư mục</span>
+                    </button>
+                    <div style="min-width:0;">
+                        <h3 class="font-bold text-sm" id="galleryTitle">Thư viện Google Drive</h3>
+                        <p class="text-xs text-on-surface-variant" id="galleryStatus">Chưa tải ảnh</p>
+                    </div>
                 </div>
-                <button type="button" id="showAllBtn" class="text-xs font-semibold text-primary hover:opacity-80 hidden px-3 py-2 rounded-full bg-primary/10">
-                    Xem tất cả
-                </button>
+                <!-- keep old btn hidden, wired to same handler -->
+                <button type="button" id="showAllBtn" class="hidden"></button>
             </div>
             <div id="driveGallery" class="gallery-grid">
                 <div class="gallery-empty">Đăng nhập Gmail để xem ảnh trong Drive</div>
@@ -1045,13 +1053,14 @@
     }
 
     function refreshGalleryStatus() {
-        if (isSearchMode || currentFolderId) return; // Don't overwrite search/folder view status
+        if (isSearchMode || currentFolderId) return;
         const statusEl = document.getElementById('galleryStatus');
         if (allDriveImages.length) {
             const folderCount = folderMap.size || 1;
             const indexText = updateIndexStatusText();
             statusEl.textContent = indexText || `${folderCount} thư mục · ${allDriveImages.length} ảnh`;
         }
+        document.getElementById('galleryTitle').textContent = 'Thư viện Google Drive';
     }
 
     function getSearchableText(image, entry) {
@@ -1506,13 +1515,24 @@
         });
     }
 
+    function setBackBtn(show, label) {
+        const btn = document.getElementById('backBtn');
+        if (show) {
+            btn.style.display = 'flex';
+            document.getElementById('backBtnLabel').textContent = label || 'Tất cả thư mục';
+        } else {
+            btn.style.display = 'none';
+        }
+    }
+
     function renderFolderView() {
         isSearchMode = false;
         currentFolderId = null;
         const gallery = document.getElementById('driveGallery');
         const statusEl = document.getElementById('galleryStatus');
-        const showAllBtn = document.getElementById('showAllBtn');
-        showAllBtn.classList.add('hidden');
+        document.getElementById('showAllBtn').classList.add('hidden');
+        document.getElementById('galleryTitle').textContent = 'Thư viện Google Drive';
+        setBackBtn(false);
 
         // Group images by parent folder
         const folderImages = new Map(); // folderId → image[]
@@ -1622,13 +1642,10 @@
         currentFolderId = folderId;
         const gallery = document.getElementById('driveGallery');
         const statusEl = document.getElementById('galleryStatus');
-        const showAllBtn = document.getElementById('showAllBtn');
 
-        // Show back button
-        showAllBtn.textContent = '← Tất cả thư mục';
-        showAllBtn.classList.remove('hidden');
-
-        statusEl.textContent = `📁 ${folderName} · ${images.length} ảnh`;
+        document.getElementById('galleryTitle').textContent = folderName;
+        statusEl.textContent = `${images.length} ảnh`;
+        setBackBtn(true, 'Tất cả thư mục');
 
         gallery.innerHTML = '';
         images.forEach((image) => {
@@ -1695,6 +1712,23 @@
             });
 
             renderGoogleLoginButton();
+
+            // Try restoring previous session (F5 fix)
+            const session = loadSession();
+            if (session) {
+                statusEl.textContent = 'Đang khôi phục phiên đăng nhập...';
+                try {
+                    gapi.client.setToken({ access_token: session.access_token });
+                    currentAccessToken = session.access_token;
+                    currentUser = session.user;
+                    showChatScreen();
+                    await loadDriveImages();
+                    return;
+                } catch (_) {
+                    clearSession();
+                }
+            }
+
             statusEl.textContent = 'Đăng nhập bằng Gmail để tìm ảnh trong Google Drive của bạn';
         } catch (error) {
             console.error('Init error:', error);
@@ -1727,6 +1761,30 @@
         container.appendChild(button);
     }
 
+    function saveSession(token, expiresIn, user) {
+        try {
+            sessionStorage.setItem('klm_session', JSON.stringify({
+                access_token: token,
+                expires_at: Date.now() + (expiresIn || 3600) * 1000,
+                user
+            }));
+        } catch (_) {}
+    }
+
+    function clearSession() {
+        try { sessionStorage.removeItem('klm_session'); } catch (_) {}
+    }
+
+    function loadSession() {
+        try {
+            const raw = sessionStorage.getItem('klm_session');
+            if (!raw) return null;
+            const s = JSON.parse(raw);
+            if (!s.access_token || s.expires_at < Date.now() + 60000) return null;
+            return s;
+        } catch (_) { return null; }
+    }
+
     async function handleTokenResponse(response) {
         const statusEl = document.getElementById('loadingStatus');
 
@@ -1744,6 +1802,7 @@
             }).then((res) => res.json());
 
             currentUser = userInfo;
+            saveSession(response.access_token, response.expires_in, userInfo);
             showChatScreen();
             await loadDriveImages();
         } catch (error) {
@@ -1792,10 +1851,10 @@
     }
 
     document.getElementById('showAllBtn').addEventListener('click', () => {
-        if (currentFolderId || isSearchMode) {
-            renderFolderView();
-            updateStatus('', 'success');
-        }
+        renderFolderView(); updateStatus('', 'success');
+    });
+    document.getElementById('backBtn').addEventListener('click', () => {
+        renderFolderView(); updateStatus('', 'success');
     });
 
     document.getElementById('chatForm').addEventListener('submit', async (e) => {
@@ -1813,12 +1872,9 @@
             isSearchMode = true;
             currentFolderId = null;
             const modeLabel = result.mode === 'instant' ? 'Tức thì' : result.mode === 'vision' ? 'GPT-4o-mini' : result.mode === 'index' ? 'AI Index' : 'Lỗi';
+            document.getElementById('galleryTitle').textContent = `Kết quả: "${prompt}"`;
             renderGallery(result.images, `${result.images.length} ảnh · ${modeLabel}`);
-
-            // Show back button after search
-            const showAllBtn = document.getElementById('showAllBtn');
-            showAllBtn.textContent = '← Tất cả thư mục';
-            showAllBtn.classList.remove('hidden');
+            setBackBtn(true, 'Tất cả thư mục');
 
             if (result.images.length > 0) {
                 updateStatus(result.summary, 'success');
@@ -1896,6 +1952,7 @@
     }
 
     function logout() {
+        clearSession();
         const token = gapi.client.getToken();
         if (token?.access_token) {
             google.accounts.oauth2.revoke(token.access_token, () => {
@@ -1908,6 +1965,9 @@
         currentUser = null;
         currentAccessToken = null;
         isLoadingDrive = false;
+        folderMap.clear();
+        currentFolderId = null;
+        isSearchMode = false;
 
         document.getElementById('chatScreen').classList.add('hidden');
         document.getElementById('loginScreen').style.display = 'flex';
