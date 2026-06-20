@@ -351,9 +351,14 @@
             overflow-y: auto;
             padding: 24px;
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
             gap: 16px;
             align-content: start;
+        }
+
+        /* Folder cards need more space than image thumbnails */
+        .gallery-grid:has(.folder-card) {
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         }
 
         .gallery-empty {
@@ -2015,6 +2020,18 @@
     }
 
     // ── Image modal (updated) ─────────────────────────────────────────────
+    function getBestPreviewUrl(image) {
+        // Thumbnail link works most reliably (already displayed in gallery)
+        if (image.thumbnailLink) {
+            return image.thumbnailLink.replace(/=s\d+$/, '=s1200').replace(/=w\d+-h\d+/, '=s1200');
+        }
+        // Fallback: Drive API media URL with token
+        if (currentAccessToken) {
+            return `https://www.googleapis.com/drive/v3/files/${image.id}?alt=media&access_token=${currentAccessToken}`;
+        }
+        return `https://drive.google.com/uc?id=${image.id}&export=view`;
+    }
+
     function openImageModal(image) {
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
@@ -2024,23 +2041,24 @@
         content.className = 'modal-content';
         content.onclick = (e) => e.stopPropagation();
 
-        const previewUrl = currentAccessToken
-            ? `https://www.googleapis.com/drive/v3/files/${image.id}?alt=media&access_token=${currentAccessToken}`
-            : `https://drive.google.com/uc?id=${image.id}&export=view`;
-
         const driveLink = `https://drive.google.com/file/d/${image.id}/view`;
-        const downloadLink = image.webContentLink ? `${image.webContentLink}&export=download` : `https://drive.google.com/uc?id=${image.id}&export=download`;
+        const downloadLink = image.webContentLink
+            ? `${image.webContentLink}&export=download`
+            : `https://drive.google.com/uc?id=${image.id}&export=download`;
 
         content.innerHTML = `
             <button onclick="this.closest('.modal-overlay').remove()" class="float-right mb-4 text-slate-600 hover:text-primary">
                 <span class="material-symbols-outlined">close</span>
             </button>
             <div style="clear:both;"></div>
-            <img src="${previewUrl}" alt="${image.name}" class="w-full rounded-lg mb-4 max-h-96 object-contain">
-            <h3 class="text-base font-bold mb-1">${image.name}</h3>
+            <div style="width:100%;background:#f0f1f5;border-radius:12px;overflow:hidden;margin-bottom:16px;display:flex;align-items:center;justify-content:center;min-height:200px;">
+                <img id="modalImg" alt="${image.name}"
+                    style="max-width:100%;max-height:480px;object-fit:contain;display:block;">
+            </div>
+            <h3 class="text-base font-bold mb-1" style="word-break:break-all;">${image.name}</h3>
             <p class="text-on-surface-variant text-sm mb-4">Tạo lúc: ${new Date(image.createdTime).toLocaleDateString('vi-VN')}</p>
             <div class="modal-action-row">
-                <a href="${previewUrl}" target="_blank" class="modal-action-btn primary">
+                <a href="${driveLink}" target="_blank" class="modal-action-btn primary">
                     <span class="material-symbols-outlined" style="font-size:16px">open_in_new</span> Xem
                 </a>
                 <a href="${downloadLink}" class="modal-action-btn secondary">
@@ -2054,12 +2072,29 @@
                 </button>
             </div>`;
 
-        content.querySelector('#copyImageLinkBtn').onclick = () => {
-            copyToClipboard(driveLink, 'link ảnh');
-        };
-        content.querySelector('#shareImageBtn').onclick = () => {
-            openShareDialog(image.id, image.name);
-        };
+        // Try preview URLs in order with fallback chain
+        const imgEl = content.querySelector('#modalImg');
+        const urlChain = [
+            getBestPreviewUrl(image),
+            currentAccessToken ? `https://www.googleapis.com/drive/v3/files/${image.id}?alt=media&access_token=${currentAccessToken}` : null,
+            `https://drive.google.com/thumbnail?id=${image.id}&sz=w1200`,
+            `https://lh3.googleusercontent.com/d/${image.id}=w1200`,
+        ].filter(Boolean);
+
+        let urlIdx = 0;
+        function tryNextUrl() {
+            if (urlIdx >= urlChain.length) {
+                imgEl.style.display = 'none';
+                imgEl.parentElement.innerHTML = `<span style="color:#9395a5;font-size:13px;padding:24px;">Không tải được ảnh preview — <a href="${driveLink}" target="_blank" style="color:#004ac6;">Mở trong Drive</a></span>`;
+                return;
+            }
+            imgEl.src = urlChain[urlIdx++];
+        }
+        imgEl.onerror = tryNextUrl;
+        tryNextUrl();
+
+        content.querySelector('#copyImageLinkBtn').onclick = () => copyToClipboard(driveLink, 'link ảnh');
+        content.querySelector('#shareImageBtn').onclick = () => openShareDialog(image.id, image.name);
 
         modal.appendChild(content);
         document.body.appendChild(modal);
