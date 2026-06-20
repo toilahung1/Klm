@@ -484,6 +484,209 @@
             color: #737686;
             margin-top: 2px;
         }
+
+        /* Folder action bar */
+        .folder-actions {
+            display: flex;
+            gap: 6px;
+            padding: 0 10px 10px;
+        }
+
+        .folder-action-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 6px 8px;
+            border-radius: 8px;
+            border: 1.5px solid #e1e2ea;
+            background: #f6f7fb;
+            color: #3d3f52;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            white-space: nowrap;
+        }
+
+        .folder-action-btn:hover {
+            background: #e8edff;
+            border-color: #004ac6;
+            color: #004ac6;
+        }
+
+        .folder-action-btn .material-symbols-outlined {
+            font-size: 14px;
+        }
+
+        /* Share dialog */
+        .share-dialog-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .share-dialog {
+            background: #fff;
+            border-radius: 20px;
+            padding: 28px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+        }
+
+        .share-dialog h3 {
+            font-size: 17px;
+            font-weight: 700;
+            color: #1a1c23;
+            margin-bottom: 4px;
+        }
+
+        .share-dialog .share-subtitle {
+            font-size: 12px;
+            color: #737686;
+            margin-bottom: 16px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .share-dialog input[type="email"] {
+            width: 100%;
+            border: 1.5px solid #e1e2ea;
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 14px;
+            outline: none;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+            transition: border-color 0.15s;
+        }
+
+        .share-dialog input[type="email"]:focus {
+            border-color: #004ac6;
+        }
+
+        .share-dialog select {
+            width: 100%;
+            border: 1.5px solid #e1e2ea;
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 14px;
+            outline: none;
+            box-sizing: border-box;
+            margin-bottom: 16px;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        .share-dialog-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .share-dialog-actions button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.15s;
+        }
+
+        .share-dialog-actions .btn-cancel {
+            background: #f0f1f5;
+            color: #3d3f52;
+        }
+
+        .share-dialog-actions .btn-share {
+            background: #004ac6;
+            color: #fff;
+        }
+
+        .share-dialog-actions button:hover {
+            opacity: 0.85;
+        }
+
+        .share-dialog .share-result {
+            margin-top: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .share-dialog .share-result.ok {
+            background: #e6f4ea;
+            color: #1a6b2e;
+        }
+
+        .share-dialog .share-result.err {
+            background: #fce8e8;
+            color: #9b2020;
+        }
+
+        /* Copy toast */
+        .copy-toast {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: #1a1c23;
+            color: #fff;
+            padding: 10px 22px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 600;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+
+        .copy-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Image modal action buttons */
+        .modal-action-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .modal-action-btn {
+            flex: 1;
+            min-width: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 11px 14px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.15s;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .modal-action-btn.primary { background: #004ac6; color: #fff; }
+        .modal-action-btn.secondary { background: #eef0f8; color: #1a1c23; }
+        .modal-action-btn.ghost { background: #f6f7fb; color: #3d3f52; border: 1.5px solid #e1e2ea; }
+        .modal-action-btn:hover { opacity: 0.85; }
     </style>
 </head>
 <body class="bg-background text-on-surface">
@@ -527,6 +730,9 @@
         </div>
     </div>
 </div>
+
+<!-- Toast notification -->
+<div id="copyToast" class="copy-toast"></div>
 
 <!-- App Screen -->
 <div id="chatScreen" class="hidden chat-container">
@@ -1336,7 +1542,6 @@
     function createFolderCard(folderId, folderName, images) {
         const card = document.createElement('div');
         card.className = 'folder-card';
-        card.onclick = () => openFolderView(folderId, folderName, images);
 
         // Show up to 4 preview thumbnails
         const previewGrid = document.createElement('div');
@@ -1367,8 +1572,43 @@
 
         info.appendChild(nameEl);
         info.appendChild(countEl);
-        card.appendChild(previewGrid);
-        card.appendChild(info);
+
+        // Action buttons: copy link + share
+        const actions = document.createElement('div');
+        actions.className = 'folder-actions';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'folder-action-btn';
+        copyBtn.innerHTML = '<span class="material-symbols-outlined">link</span> Copy link';
+        copyBtn.onclick = (e) => {
+            e.stopPropagation();
+            const link = folderId === '__root__'
+                ? 'https://drive.google.com/drive/my-drive'
+                : `https://drive.google.com/drive/folders/${folderId}`;
+            copyToClipboard(link, 'link thư mục');
+        };
+
+        const shareBtn = document.createElement('button');
+        shareBtn.className = 'folder-action-btn';
+        shareBtn.innerHTML = '<span class="material-symbols-outlined">person_add</span> Chia sẻ';
+        shareBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (folderId === '__root__') { showToast('Không thể chia sẻ Drive gốc'); return; }
+            openShareDialog(folderId, folderName);
+        };
+
+        actions.appendChild(copyBtn);
+        actions.appendChild(shareBtn);
+
+        // Make the top part (preview + info) clickable to open folder
+        const clickArea = document.createElement('div');
+        clickArea.style.cursor = 'pointer';
+        clickArea.onclick = () => openFolderView(folderId, folderName, images);
+        clickArea.appendChild(previewGrid);
+        clickArea.appendChild(info);
+
+        card.appendChild(clickArea);
+        card.appendChild(actions);
         return card;
     }
 
@@ -1650,41 +1890,6 @@
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    function openImageModal(image) {
-        const modal = document.createElement('div');
-        modal.className = 'modal-overlay';
-        modal.onclick = () => modal.remove();
-        
-        const content = document.createElement('div');
-        content.className = 'modal-content';
-        content.onclick = (e) => e.stopPropagation();
-        
-        const previewUrl = currentAccessToken
-            ? `https://www.googleapis.com/drive/v3/files/${image.id}?alt=media&access_token=${currentAccessToken}`
-            : `https://drive.google.com/uc?id=${image.id}&export=view`;
-        
-        content.innerHTML = `
-            <button onclick="this.closest('.modal-overlay').remove()" class="float-right mb-4 text-slate-600 hover:text-primary">
-                <span class="material-symbols-outlined">close</span>
-            </button>
-            <div style="clear: both;"></div>
-            <img src="${previewUrl}" alt="${image.name}" class="w-full rounded-lg mb-6 max-h-96 object-contain">
-            <h3 class="text-lg font-bold mb-2">${image.name}</h3>
-            <p class="text-on-surface-variant mb-6 text-sm">Tạo lúc: ${new Date(image.createdTime).toLocaleDateString('vi-VN')}</p>
-            <div class="flex gap-3 flex-col sm:flex-row">
-                <a href="${previewUrl}" target="_blank" class="flex-1 bg-primary text-on-primary py-3 rounded-full font-semibold text-center hover:opacity-90 transition-opacity">
-                    Xem Trong Tab Mới
-                </a>
-                <a href="${image.webContentLink}&export=download" class="flex-1 bg-secondary-container text-on-surface py-3 rounded-full font-semibold text-center hover:opacity-90 transition-opacity">
-                    Tải Xuống
-                </a>
-            </div>
-        `;
-        
-        modal.appendChild(content);
-        document.body.appendChild(modal);
-    }
-
     function logout() {
         const token = gapi.client.getToken();
         if (token?.access_token) {
@@ -1717,6 +1922,147 @@
         if (currentUser) {
             document.getElementById('userEmail').textContent = currentUser.email || 'Google User';
         }
+    }
+
+    // ── Utility: copy text + show toast ──────────────────────────────────
+    function copyToClipboard(text, label) {
+        navigator.clipboard.writeText(text).then(() => showToast(`Đã sao chép ${label}`)).catch(() => {
+            // fallback
+            const el = document.createElement('textarea');
+            el.value = text;
+            el.style.position = 'fixed'; el.style.opacity = '0';
+            document.body.appendChild(el);
+            el.select(); document.execCommand('copy');
+            document.body.removeChild(el);
+            showToast(`Đã sao chép ${label}`);
+        });
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById('copyToast');
+        toast.textContent = msg;
+        toast.classList.add('show');
+        clearTimeout(toast._timer);
+        toast._timer = setTimeout(() => toast.classList.remove('show'), 2200);
+    }
+
+    // ── Share dialog ──────────────────────────────────────────────────────
+    function openShareDialog(fileId, fileName) {
+        const overlay = document.createElement('div');
+        overlay.className = 'share-dialog-overlay';
+        overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+
+        overlay.innerHTML = `
+            <div class="share-dialog" onclick="event.stopPropagation()">
+                <h3>Chia sẻ</h3>
+                <div class="share-subtitle">${fileName}</div>
+                <input type="email" id="shareEmailInput" placeholder="Nhập email người nhận" autocomplete="email"/>
+                <select id="shareRoleSelect">
+                    <option value="reader">Xem (viewer)</option>
+                    <option value="commenter">Bình luận (commenter)</option>
+                    <option value="writer">Chỉnh sửa (editor)</option>
+                </select>
+                <div class="share-dialog-actions">
+                    <button class="btn-cancel" onclick="this.closest('.share-dialog-overlay').remove()">Hủy</button>
+                    <button class="btn-share" id="shareSubmitBtn">Chia sẻ</button>
+                </div>
+                <div id="shareResult"></div>
+            </div>`;
+
+        document.body.appendChild(overlay);
+        overlay.querySelector('#shareEmailInput').focus();
+
+        overlay.querySelector('#shareSubmitBtn').onclick = async () => {
+            const email = overlay.querySelector('#shareEmailInput').value.trim();
+            const role = overlay.querySelector('#shareRoleSelect').value;
+            const resultEl = overlay.querySelector('#shareResult');
+            const btn = overlay.querySelector('#shareSubmitBtn');
+
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                resultEl.className = 'share-result err';
+                resultEl.textContent = 'Email không hợp lệ.';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Đang chia sẻ...';
+            resultEl.className = ''; resultEl.textContent = '';
+
+            try {
+                const res = await fetch(
+                    `https://www.googleapis.com/drive/v3/permissions/${fileId}?sendNotificationEmail=true&emailMessage=Chia+se+tu+Klooker+Media+Image+Finder`,
+                    {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${currentAccessToken}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ role, type: 'user', emailAddress: email })
+                    }
+                );
+                if (res.ok) {
+                    resultEl.className = 'share-result ok';
+                    resultEl.textContent = `✓ Đã chia sẻ với ${email}. Họ sẽ nhận được email thông báo.`;
+                    btn.textContent = 'Xong';
+                } else {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data?.error?.message || `HTTP ${res.status}`);
+                }
+            } catch (err) {
+                resultEl.className = 'share-result err';
+                resultEl.textContent = `Lỗi: ${err.message}`;
+                btn.disabled = false;
+                btn.textContent = 'Chia sẻ';
+            }
+        };
+    }
+
+    // ── Image modal (updated) ─────────────────────────────────────────────
+    function openImageModal(image) {
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.onclick = () => modal.remove();
+
+        const content = document.createElement('div');
+        content.className = 'modal-content';
+        content.onclick = (e) => e.stopPropagation();
+
+        const previewUrl = currentAccessToken
+            ? `https://www.googleapis.com/drive/v3/files/${image.id}?alt=media&access_token=${currentAccessToken}`
+            : `https://drive.google.com/uc?id=${image.id}&export=view`;
+
+        const driveLink = `https://drive.google.com/file/d/${image.id}/view`;
+        const downloadLink = image.webContentLink ? `${image.webContentLink}&export=download` : `https://drive.google.com/uc?id=${image.id}&export=download`;
+
+        content.innerHTML = `
+            <button onclick="this.closest('.modal-overlay').remove()" class="float-right mb-4 text-slate-600 hover:text-primary">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            <div style="clear:both;"></div>
+            <img src="${previewUrl}" alt="${image.name}" class="w-full rounded-lg mb-4 max-h-96 object-contain">
+            <h3 class="text-base font-bold mb-1">${image.name}</h3>
+            <p class="text-on-surface-variant text-sm mb-4">Tạo lúc: ${new Date(image.createdTime).toLocaleDateString('vi-VN')}</p>
+            <div class="modal-action-row">
+                <a href="${previewUrl}" target="_blank" class="modal-action-btn primary">
+                    <span class="material-symbols-outlined" style="font-size:16px">open_in_new</span> Xem
+                </a>
+                <a href="${downloadLink}" class="modal-action-btn secondary">
+                    <span class="material-symbols-outlined" style="font-size:16px">download</span> Tải
+                </a>
+                <button class="modal-action-btn ghost" id="copyImageLinkBtn">
+                    <span class="material-symbols-outlined" style="font-size:16px">link</span> Copy link
+                </button>
+                <button class="modal-action-btn ghost" id="shareImageBtn">
+                    <span class="material-symbols-outlined" style="font-size:16px">share</span> Chia sẻ
+                </button>
+            </div>`;
+
+        content.querySelector('#copyImageLinkBtn').onclick = () => {
+            copyToClipboard(driveLink, 'link ảnh');
+        };
+        content.querySelector('#shareImageBtn').onclick = () => {
+            openShareDialog(image.id, image.name);
+        };
+
+        modal.appendChild(content);
+        document.body.appendChild(modal);
     }
 
     window.addEventListener('load', initializeApp);
