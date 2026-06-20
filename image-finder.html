@@ -1021,7 +1021,12 @@
             if (!raw) return null;
             const p = JSON.parse(raw);
             if (!p.ts || Date.now() - p.ts > DRIVE_CACHE_TTL) return null;
-            return { images: p.images || [], folders: new Map(p.folders || []) };
+            // Migrate old string-only folder entries to objects
+            const folderEntries = (p.folders || []).map(([id, val]) => [
+                id,
+                typeof val === 'string' ? { name: val, createdTime: null } : val
+            ]);
+            return { images: p.images || [], folders: new Map(folderEntries) };
         } catch (_) { return null; }
     }
 
@@ -1085,33 +1090,23 @@
     }
 
     async function fetchFolderNames(accessToken, folderIds) {
-        const result = new Map();
+        const result = new Map(); // folderId → { name, createdTime }
         const ids = [...new Set(folderIds)].filter(Boolean);
         if (!ids.length) return result;
 
-        // Fetch in batches of 50 using Drive API
         for (let i = 0; i < ids.length; i += 50) {
             const batch = ids.slice(i, i + 50);
-            const q = batch.map((id) => `'${id}' in parents`).join(' or ');
-            // Just get folder names by ID
-            const params = new URLSearchParams({
-                q: `mimeType = 'application/vnd.google-apps.folder' and trashed=false`,
-                pageSize: '100',
-                fields: 'files(id,name)',
-                includeItemsFromAllDrives: 'true',
-                supportsAllDrives: 'true'
-            });
-            // Override: directly get by specific IDs is not possible in list, use individual gets
-            // Instead batch with separate requests
             await Promise.all(batch.map(async (folderId) => {
                 try {
                     const res = await fetch(
-                        `https://www.googleapis.com/drive/v3/files/${folderId}?fields=id,name`,
+                        `https://www.googleapis.com/drive/v3/files/${folderId}?fields=id,name,createdTime`,
                         { headers: { Authorization: `Bearer ${accessToken}` } }
                     );
                     if (!res.ok) return;
                     const data = await res.json();
-                    if (data.id && data.name) result.set(data.id, data.name);
+                    if (data.id && data.name) {
+                        result.set(data.id, { name: data.name, createdTime: data.createdTime || null });
+                    }
                 } catch (_) {}
             }));
         }
@@ -1875,9 +1870,11 @@
         // Build sorted folder list
         let folderList = [];
         folderImages.forEach((images, folderId) => {
-            const folderName = folderMap.get(folderId) || 'Thư mục';
+            const folderMeta = folderMap.get(folderId);
+            const folderName = (typeof folderMeta === 'object' ? folderMeta?.name : folderMeta) || 'Thư mục';
+            const folderCreatedTime = typeof folderMeta === 'object' ? folderMeta?.createdTime : null;
             const newestTs = Math.max(...images.map((img) => new Date(img.createdTime || 0).getTime()));
-            folderList.push({ folderId, folderName, images, newestTs });
+            folderList.push({ folderId, folderName, folderCreatedTime, images, newestTs });
         });
 
         if (currentSort === 'name') {
@@ -1888,8 +1885,8 @@
             folderList.sort((a, b) => b.newestTs - a.newestTs);
         }
 
-        folderList.forEach(({ folderId, folderName, images }) => {
-            gallery.appendChild(createFolderCard(folderId, folderName, images));
+        folderList.forEach(({ folderId, folderName, folderCreatedTime, images }) => {
+            gallery.appendChild(createFolderCard(folderId, folderName, images, folderCreatedTime));
         });
 
         if (noFolderImages.length) {
@@ -1897,7 +1894,7 @@
         }
     }
 
-    function createFolderCard(folderId, folderName, images) {
+    function createFolderCard(folderId, folderName, images, folderCreatedTime = null) {
         const card = document.createElement('div');
         card.className = 'folder-card';
 
@@ -1928,19 +1925,22 @@
         countEl.className = 'folder-count';
         countEl.textContent = `${images.length} ảnh`;
 
-        // Newest and oldest image dates in this folder
-        const timestamps = images
-            .map((img) => new Date(img.createdTime || 0).getTime())
-            .filter((t) => t > 0);
-        const newestDate = timestamps.length ? formatDate(new Date(Math.max(...timestamps)).toISOString()) : '';
-        const oldestDate = timestamps.length ? formatDate(new Date(Math.min(...timestamps)).toISOString()) : '';
-
         const dateEl = document.createElement('div');
         dateEl.className = 'folder-date';
-        if (newestDate && oldestDate && newestDate !== oldestDate) {
-            dateEl.textContent = `${oldestDate} – ${newestDate}`;
-        } else if (newestDate) {
-            dateEl.textContent = newestDate;
+
+        if (folderCreatedTime) {
+            // Show the folder's own creation date
+            dateEl.textContent = `Tạo: ${formatDate(folderCreatedTime)}`;
+        } else {
+            // Fallback: show range of images inside
+            const timestamps = images
+                .map((img) => new Date(img.createdTime || 0).getTime())
+                .filter((t) => t > 0);
+            if (timestamps.length) {
+                const oldest = formatDate(new Date(Math.min(...timestamps)).toISOString());
+                const newest = formatDate(new Date(Math.max(...timestamps)).toISOString());
+                dateEl.textContent = oldest !== newest ? `${oldest} – ${newest}` : oldest;
+            }
         }
 
         info.appendChild(nameEl);
