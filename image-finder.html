@@ -491,13 +491,29 @@
             left: 0;
             right: 0;
             bottom: 0;
-            padding: 8px;
-            font-size: 10px;
+            padding: 20px 8px 8px;
             color: white;
-            background: linear-gradient(to top, rgba(0,0,0,0.75), transparent);
+            background: linear-gradient(to top, rgba(0,0,0,0.80), transparent);
+        }
+
+        .gallery-item-name {
+            font-size: 10px;
+            font-weight: 500;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+
+        .gallery-item-date {
+            font-size: 9px;
+            opacity: 0.75;
+            margin-top: 1px;
+        }
+
+        .folder-date {
+            font-size: 10px;
+            color: #9395a5;
+            margin-top: 1px;
         }
 
         .ai-badge {
@@ -1286,6 +1302,15 @@
         return score;
     }
 
+    function formatDate(dateStr) {
+        if (!dateStr) return '';
+        try {
+            const d = new Date(dateStr);
+            if (isNaN(d)) return '';
+            return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        } catch (_) { return ''; }
+    }
+
     function getThumbnailUrl(image, size = 300) {
         if (currentAccessToken && image.thumbnailLink) {
             const joiner = image.thumbnailLink.includes('?') ? '&' : '?';
@@ -1780,8 +1805,17 @@
 
             const label = document.createElement('div');
             label.className = 'gallery-item-label';
-            label.textContent = image.name;
 
+            const nameEl = document.createElement('div');
+            nameEl.className = 'gallery-item-name';
+            nameEl.textContent = image.name;
+
+            const dateEl = document.createElement('div');
+            dateEl.className = 'gallery-item-date';
+            dateEl.textContent = formatDate(image.createdTime);
+
+            label.appendChild(nameEl);
+            if (dateEl.textContent) label.appendChild(dateEl);
             item.appendChild(img);
             item.appendChild(label);
             gallery.appendChild(item);
@@ -1894,8 +1928,24 @@
         countEl.className = 'folder-count';
         countEl.textContent = `${images.length} ảnh`;
 
+        // Newest and oldest image dates in this folder
+        const timestamps = images
+            .map((img) => new Date(img.createdTime || 0).getTime())
+            .filter((t) => t > 0);
+        const newestDate = timestamps.length ? formatDate(new Date(Math.max(...timestamps)).toISOString()) : '';
+        const oldestDate = timestamps.length ? formatDate(new Date(Math.min(...timestamps)).toISOString()) : '';
+
+        const dateEl = document.createElement('div');
+        dateEl.className = 'folder-date';
+        if (newestDate && oldestDate && newestDate !== oldestDate) {
+            dateEl.textContent = `${oldestDate} – ${newestDate}`;
+        } else if (newestDate) {
+            dateEl.textContent = newestDate;
+        }
+
         info.appendChild(nameEl);
         info.appendChild(countEl);
+        if (dateEl.textContent) info.appendChild(dateEl);
 
         // Action buttons: copy link + share
         const actions = document.createElement('div');
@@ -1969,8 +2019,17 @@
 
             const label = document.createElement('div');
             label.className = 'gallery-item-label';
-            label.textContent = image.name;
 
+            const nameEl = document.createElement('div');
+            nameEl.className = 'gallery-item-name';
+            nameEl.textContent = image.name;
+
+            const dateEl = document.createElement('div');
+            dateEl.className = 'gallery-item-date';
+            dateEl.textContent = formatDate(image.createdTime);
+
+            label.appendChild(nameEl);
+            if (dateEl.textContent) label.appendChild(dateEl);
             item.appendChild(img);
             item.appendChild(label);
             gallery.appendChild(item);
