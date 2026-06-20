@@ -833,8 +833,12 @@
         const status = error?.status || error?.result?.error?.code;
         const message = error?.result?.error?.message || error?.message || '';
 
-        if (status === 403 || message.includes('accessNotConfigured')) {
-            return 'Google Drive API chưa được bật. Vào Google Cloud Console → API Library → bật "Google Drive API" cho project klooker-media-image-finder.';
+        if (status === 403) {
+            if (message.includes('accessNotConfigured')) {
+                return 'Google Drive API chưa được bật trong Google Cloud Console. Liên hệ quản trị viên.';
+            }
+            // Likely insufficient scope — app in Testing mode
+            return 'Tài khoản này chưa được cấp quyền Drive. Vui lòng đăng xuất rồi đăng nhập lại và chọn "Cho phép" tất cả quyền trong cửa sổ Google.';
         }
         if (status === 401) {
             return 'Phiên đăng nhập hết hạn. Vui lòng đăng xuất và đăng nhập lại.';
@@ -1844,7 +1848,10 @@
             const message = getDriveErrorMessage(error);
             updateStatus(message, 'error');
             document.getElementById('galleryStatus').textContent = 'Lỗi tải ảnh';
-            document.getElementById('driveGallery').innerHTML = `<div class="gallery-empty">${message}</div>`;
+            const reloginHint = (error?.status === 403 && !String(error?.result?.error?.message || '').includes('accessNotConfigured'))
+                ? `<br><button onclick="logout()" style="margin-top:12px;padding:8px 20px;background:#004ac6;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Đăng xuất & Thử lại</button>`
+                : '';
+            document.getElementById('driveGallery').innerHTML = `<div class="gallery-empty">${message}${reloginHint}</div>`;
         } finally {
             isLoadingDrive = false;
         }
