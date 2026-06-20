@@ -410,6 +410,80 @@
             font-size: 11px;
             font-weight: 600;
         }
+
+        /* Folder card styles */
+        .folder-card {
+            border-radius: 16px;
+            overflow: hidden;
+            cursor: pointer;
+            background: #fff;
+            border: 1.5px solid #e1e2ea;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .folder-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0, 74, 198, 0.13);
+            border-color: #004ac6;
+        }
+
+        .folder-preview-grid {
+            width: 100%;
+            aspect-ratio: 4/3;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 2px;
+            background: #f0f1f5;
+            overflow: hidden;
+        }
+
+        .folder-preview-grid img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .folder-preview-grid img:first-child:last-child {
+            grid-column: 1 / -1;
+            grid-row: 1 / -1;
+        }
+
+        .folder-preview-grid img:nth-child(1):nth-last-child(2),
+        .folder-preview-grid img:nth-child(2):last-child {
+            grid-row: 1 / -1;
+        }
+
+        .folder-no-preview {
+            grid-column: 1 / -1;
+            grid-row: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #e8eaf2;
+            color: #9395a5;
+            font-size: 36px;
+        }
+
+        .folder-info {
+            padding: 10px 12px 12px;
+        }
+
+        .folder-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #1a1c23;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .folder-count {
+            font-size: 11px;
+            color: #737686;
+            margin-top: 2px;
+        }
     </style>
 </head>
 <body class="bg-background text-on-surface">
@@ -532,6 +606,9 @@
     let tokenClient = null;
     let isLoadingDrive = false;
     let currentAccessToken = null;
+    let folderMap = new Map();       // folderId → {id, name}
+    let currentFolderId = null;      // null = folder view, string = inside folder
+    let isSearchMode = false;        // true khi đang hiển thị kết quả search
 
     function getDriveErrorMessage(error) {
         const status = error?.status || error?.result?.error?.code;
@@ -557,7 +634,7 @@
             const params = new URLSearchParams({
                 q: query,
                 pageSize: '100',
-                fields: 'nextPageToken,files(id,name,mimeType,createdTime,modifiedTime,webContentLink,thumbnailLink,iconLink)',
+                fields: 'nextPageToken,files(id,name,mimeType,createdTime,modifiedTime,webContentLink,thumbnailLink,iconLink,parents)',
                 includeItemsFromAllDrives: 'true',
                 supportsAllDrives: 'true'
             });
@@ -582,6 +659,40 @@
         } while (pageToken);
 
         return collected;
+    }
+
+    async function fetchFolderNames(accessToken, folderIds) {
+        const result = new Map();
+        const ids = [...new Set(folderIds)].filter(Boolean);
+        if (!ids.length) return result;
+
+        // Fetch in batches of 50 using Drive API
+        for (let i = 0; i < ids.length; i += 50) {
+            const batch = ids.slice(i, i + 50);
+            const q = batch.map((id) => `'${id}' in parents`).join(' or ');
+            // Just get folder names by ID
+            const params = new URLSearchParams({
+                q: `mimeType = 'application/vnd.google-apps.folder' and trashed=false`,
+                pageSize: '100',
+                fields: 'files(id,name)',
+                includeItemsFromAllDrives: 'true',
+                supportsAllDrives: 'true'
+            });
+            // Override: directly get by specific IDs is not possible in list, use individual gets
+            // Instead batch with separate requests
+            await Promise.all(batch.map(async (folderId) => {
+                try {
+                    const res = await fetch(
+                        `https://www.googleapis.com/drive/v3/files/${folderId}?fields=id,name`,
+                        { headers: { Authorization: `Bearer ${accessToken}` } }
+                    );
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    if (data.id && data.name) result.set(data.id, data.name);
+                } catch (_) {}
+            }));
+        }
+        return result;
     }
 
     function getIndexDb() {
@@ -723,9 +834,12 @@
     }
 
     function refreshGalleryStatus() {
+        if (isSearchMode || currentFolderId) return; // Don't overwrite search/folder view status
         const statusEl = document.getElementById('galleryStatus');
-        if (displayedImages.length === allDriveImages.length && allDriveImages.length) {
-            statusEl.textContent = updateIndexStatusText();
+        if (allDriveImages.length) {
+            const folderCount = folderMap.size || 1;
+            const indexText = updateIndexStatusText();
+            statusEl.textContent = indexText || `${folderCount} thư mục · ${allDriveImages.length} ảnh`;
         }
     }
 
@@ -1153,12 +1267,123 @@
         const showAllBtn = document.getElementById('showAllBtn');
 
         statusEl.textContent = statusText;
-        showAllBtn.classList.toggle('hidden', images.length === allDriveImages.length || !allDriveImages.length);
+        showAllBtn.classList.toggle('hidden', true);
 
         if (!images.length) {
             gallery.innerHTML = '<div class="gallery-empty">Không có ảnh để hiển thị</div>';
             return;
         }
+
+        gallery.innerHTML = '';
+        images.forEach((image) => {
+            const item = document.createElement('div');
+            item.className = 'gallery-item';
+            item.onclick = () => openImageModal(image);
+
+            const img = document.createElement('img');
+            img.src = getThumbnailUrl(image);
+            img.alt = image.name;
+            img.loading = 'lazy';
+
+            const label = document.createElement('div');
+            label.className = 'gallery-item-label';
+            label.textContent = image.name;
+
+            item.appendChild(img);
+            item.appendChild(label);
+            gallery.appendChild(item);
+        });
+    }
+
+    function renderFolderView() {
+        isSearchMode = false;
+        currentFolderId = null;
+        const gallery = document.getElementById('driveGallery');
+        const statusEl = document.getElementById('galleryStatus');
+        const showAllBtn = document.getElementById('showAllBtn');
+        showAllBtn.classList.add('hidden');
+
+        // Group images by parent folder
+        const folderImages = new Map(); // folderId → image[]
+        const noFolderImages = [];
+
+        allDriveImages.forEach((image) => {
+            const parentId = image.parents?.[0];
+            if (parentId) {
+                if (!folderImages.has(parentId)) folderImages.set(parentId, []);
+                folderImages.get(parentId).push(image);
+            } else {
+                noFolderImages.push(image);
+            }
+        });
+
+        const folderCount = folderImages.size + (noFolderImages.length ? 1 : 0);
+        statusEl.textContent = `${folderCount} thư mục · ${allDriveImages.length} ảnh`;
+
+        gallery.innerHTML = '';
+
+        // Render each folder card
+        folderImages.forEach((images, folderId) => {
+            const folderName = folderMap.get(folderId) || 'Thư mục';
+            gallery.appendChild(createFolderCard(folderId, folderName, images));
+        });
+
+        if (noFolderImages.length) {
+            gallery.appendChild(createFolderCard('__root__', 'Drive của tôi', noFolderImages));
+        }
+    }
+
+    function createFolderCard(folderId, folderName, images) {
+        const card = document.createElement('div');
+        card.className = 'folder-card';
+        card.onclick = () => openFolderView(folderId, folderName, images);
+
+        // Show up to 4 preview thumbnails
+        const previewGrid = document.createElement('div');
+        previewGrid.className = 'folder-preview-grid';
+        const previewCount = Math.min(images.length, 4);
+        for (let i = 0; i < previewCount; i++) {
+            const img = document.createElement('img');
+            img.src = getThumbnailUrl(images[i], 200);
+            img.alt = images[i].name;
+            img.loading = 'lazy';
+            img.onerror = () => { img.style.display = 'none'; };
+            previewGrid.appendChild(img);
+        }
+        if (previewCount === 0) {
+            previewGrid.innerHTML = '<div class="folder-no-preview"><span class="material-symbols-outlined">photo_library</span></div>';
+        }
+
+        const info = document.createElement('div');
+        info.className = 'folder-info';
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'folder-name';
+        nameEl.textContent = folderName;
+
+        const countEl = document.createElement('div');
+        countEl.className = 'folder-count';
+        countEl.textContent = `${images.length} ảnh`;
+
+        info.appendChild(nameEl);
+        info.appendChild(countEl);
+        card.appendChild(previewGrid);
+        card.appendChild(info);
+        return card;
+    }
+
+    function openFolderView(folderId, folderName, images) {
+        isSearchMode = false;
+        currentFolderId = folderId;
+        const gallery = document.getElementById('driveGallery');
+        const statusEl = document.getElementById('galleryStatus');
+        const showAllBtn = document.getElementById('showAllBtn');
+
+        // Show back button
+        showAllBtn.textContent = '← Tất cả thư mục';
+        showAllBtn.classList.remove('hidden');
+
+        statusEl.textContent = `📁 ${folderName} · ${images.length} ảnh`;
 
         gallery.innerHTML = '';
         images.forEach((image) => {
@@ -1293,14 +1518,22 @@
             allDriveImages = await fetchDriveImages(currentAccessToken);
             await loadIndexFromDb();
 
-            renderGallery(allDriveImages, updateIndexStatusText() || `${allDriveImages.length} ảnh trong Drive`);
-
             if (allDriveImages.length > 0) {
-                updateStatus(`Đã tải toàn bộ ${allDriveImages.length} ảnh (kể cả ảnh cũ nhất). AI đang học thư viện nền — tìm kiếm dùng được ngay.`, 'success');
+                // Collect unique parent folder IDs
+                const parentIds = [...new Set(
+                    allDriveImages.map((img) => img.parents?.[0]).filter(Boolean)
+                )];
+                document.getElementById('galleryStatus').textContent = 'Đang tải tên thư mục...';
+                const names = await fetchFolderNames(currentAccessToken, parentIds);
+                names.forEach((name, id) => folderMap.set(id, name));
+
+                renderFolderView();
+                updateStatus(`Đã tải ${allDriveImages.length} ảnh trong ${folderMap.size} thư mục. AI đang học nền — tìm kiếm dùng được ngay.`, 'success');
                 runBackgroundIndexing(allDriveImages);
             } else {
                 updateStatus('Chưa thấy ảnh trong Drive. Upload ảnh (.jpg, .png) rồi đăng nhập lại.', 'error');
-                renderGallery([], '0 ảnh');
+                document.getElementById('driveGallery').innerHTML = '<div class="gallery-empty">Chưa có ảnh trong Drive</div>';
+                document.getElementById('galleryStatus').textContent = '0 ảnh';
             }
         } catch (error) {
             console.error('Error loading Drive images:', error);
@@ -1314,8 +1547,10 @@
     }
 
     document.getElementById('showAllBtn').addEventListener('click', () => {
-        renderGallery(allDriveImages, updateIndexStatusText() || `${allDriveImages.length} ảnh trong Drive`);
-        updateStatus(`Hiển thị toàn bộ ${allDriveImages.length} ảnh.`, 'success');
+        if (currentFolderId || isSearchMode) {
+            renderFolderView();
+            updateStatus('', 'success');
+        }
     });
 
     document.getElementById('chatForm').addEventListener('submit', async (e) => {
@@ -1330,13 +1565,20 @@
         try {
             const result = await searchImagesSmart(prompt, (text) => updateStatus(text, 'loading'));
 
+            isSearchMode = true;
+            currentFolderId = null;
             const modeLabel = result.mode === 'instant' ? 'Tức thì' : result.mode === 'vision' ? 'GPT-4o-mini' : result.mode === 'index' ? 'AI Index' : 'Lỗi';
             renderGallery(result.images, `${result.images.length} ảnh · ${modeLabel}`);
+
+            // Show back button after search
+            const showAllBtn = document.getElementById('showAllBtn');
+            showAllBtn.textContent = '← Tất cả thư mục';
+            showAllBtn.classList.remove('hidden');
 
             if (result.images.length > 0) {
                 updateStatus(result.summary, 'success');
             } else {
-                updateStatus(result.summary || `Không thấy ảnh phù hợp "${prompt}". Thử mô tả khác hoặc bấm "Xem tất cả".`, 'error');
+                updateStatus(result.summary || `Không thấy ảnh phù hợp "${prompt}". Thử mô tả khác hoặc bấm "← Tất cả thư mục".`, 'error');
             }
         } catch (error) {
             console.error('Search error:', error);
