@@ -923,9 +923,10 @@
     const STOP_WORDS = new Set(['tim', 'anh', 'image', 'photo', 'theo', 'trong', 'giup', 'cho', 'tooi', 'can']);
     const INDEX_DB_NAME = 'klooker-image-index-v1';
     const INDEX_STORE = 'entries';
-    const INDEX_CONCURRENCY = 4;
+    const INDEX_CONCURRENCY = 2;   // Giảm xuống để không vượt rate limit
+    const INDEX_DELAY_MS = 2000;   // 2s giữa mỗi batch indexing
     const GPT_MATCH_BATCH = 16;
-    const GPT_UNINDEXED_CAP = 32; // Giới hạn ảnh chưa index gửi GPT (không có mô tả → ít thông tin hơn)
+    const GPT_VERIFY_CAP = 20;     // Tuyệt đối không gửi quá 20 ảnh mỗi search
 
     let allDriveImages = [];
     let displayedImages = [];
@@ -1184,7 +1185,8 @@
                     console.warn('Index failed:', image.name, error);
                     indexProgress.failed += 1;
                     if (String(error.message).includes('429')) {
-                        await new Promise((r) => setTimeout(r, 8000));
+                        // Rate limited — wait 30s then retry
+                        await new Promise((r) => setTimeout(r, 30000));
                         queue.unshift(image);
                     }
                 } finally {
@@ -1192,6 +1194,8 @@
                     refreshGalleryStatus();
                 }
             }));
+            // Pause between batches to stay well under TPM limit
+            if (queue.length) await new Promise((r) => setTimeout(r, INDEX_DELAY_MS));
         }
 
         isIndexing = false;
@@ -1543,6 +1547,30 @@
         }
     }
 
+    // Merge two image arrays by score, deduplicated, pool-filtered
+    function mergeAndRank(listA, listB, pool, keywords, query) {
+        const poolIds = new Set(pool.map((img) => img.id));
+        const scoreMap = new Map();
+
+        const addWithScore = (img, bonus) => {
+            if (!poolIds.has(img.id)) return;
+            const entry = imageIndex.get(img.id);
+            const hay = getSearchableText(img, entry);
+            let s = scoreForSearch(img, entry, keywords, query) + bonus;
+            keywords.forEach((kw) => { if (hay.includes(kw)) s += 5; });
+            if (entry?.description) s += 8;
+            const prev = scoreMap.get(img.id);
+            if (!prev || s > prev.score) scoreMap.set(img.id, { img, score: s });
+        };
+
+        listA.forEach((img) => addWithScore(img, 20)); // Drive full-text = high bonus
+        listB.forEach((img) => addWithScore(img, 0));
+
+        return [...scoreMap.values()]
+            .sort((a, b) => b.score - a.score)
+            .map((v) => v.img);
+    }
+
     async function searchImagesSmart(query, onProgress, overridePool = null) {
         const filters = parseQueryFilters(query);
         let pool = overridePool || allDriveImages;
@@ -1561,14 +1589,15 @@
             ? filters.keywords
             : normalizeText(query).split(/\s+/).filter((word) => word.length > 1 && !STOP_WORDS.has(word));
 
+        // ── Tier 1: Instant filename match (no API) ──────────────────────
         if (isInstantSearchQuery(query)) {
             const results = searchInstant(pool, query);
             return {
                 mode: 'instant',
                 images: results,
                 summary: results.length
-                    ? `Tìm thấy ${results.length} ảnh tên có "${query}" · tức thì (không qua AI).`
-                    : `Không có file tên chứa "${query}" trong ${pool.length} ảnh.`
+                    ? `Tìm thấy ${results.length} ảnh tên có "${query}" (tức thì).`
+                    : `Không có file tên chứa "${query}".`
             };
         }
 
@@ -1577,30 +1606,66 @@
             return {
                 mode: 'index',
                 images: sorted,
-                summary: `${sorted.length} ảnh trong ${filters.months.length ? `tháng ${filters.months.join(', ')}` : ''}${filters.year ? ` năm ${filters.year}` : ''} (từ cũ → mới).`
+                summary: `${sorted.length} ảnh theo thời gian.`
             };
         }
 
-        if (onProgress) {
-            onProgress(`Đang chọn ứng viên thông minh trong ${pool.length} ảnh...`);
+        // ── Tier 2: Drive full-text + local filename scoring (free) ──────
+        if (onProgress) onProgress(`Đang tìm trong Drive (Google OCR + tên file)...`);
+
+        const [driveResults, localResults] = await Promise.all([
+            searchDriveByKeywords(keywords).catch(() => []),
+            Promise.resolve(searchImagesLocal(query))
+        ]);
+
+        const merged = mergeAndRank(driveResults, localResults, pool, keywords, query);
+
+        // High-confidence results from filename/Drive → return without GPT
+        const poolIds = new Set(pool.map((img) => img.id));
+        const highConf = merged.filter((img) => {
+            const entry = imageIndex.get(img.id);
+            const hay = getSearchableText(img, entry);
+            return passesStrictKeywordMatch(hay, keywords, query);
+        }).slice(0, 40);
+
+        if (highConf.length >= 5) {
+            return {
+                mode: 'drive',
+                images: highConf,
+                summary: `Tìm thấy ${highConf.length} ảnh qua Drive search — không tốn API.`
+            };
         }
 
-        let candidates = rankCandidatesForGpt(pool, keywords, query);
+        // ── Tier 3: GPT verify — HARD CAP 20 ảnh ────────────────────────
+        // Take best candidates: Drive results first, supplement with AI-indexed
+        let candidates = merged.slice(0, GPT_VERIFY_CAP);
+
+        if (candidates.length < GPT_VERIFY_CAP) {
+            // Fill remaining slots with AI-indexed images that have keyword in description
+            const indexedPool = pool
+                .filter((img) => {
+                    const e = imageIndex.get(img.id);
+                    if (!e?.description) return false;
+                    const hay = normalizeText(e.description + ' ' + (e.tags || []).join(' '));
+                    return keywords.some((kw) => hay.includes(kw));
+                })
+                .filter((img) => !candidates.some((c) => c.id === img.id))
+                .slice(0, GPT_VERIFY_CAP - candidates.length);
+            candidates = [...candidates, ...indexedPool];
+        }
 
         if (!candidates.length) {
-            const indexedCount = pool.filter(isImageIndexed).length;
             return {
-                mode: 'index',
-                images: [],
-                summary: indexedCount === 0
-                    ? `AI chưa học ảnh nào (đang chạy nền). Đợi vài phút rồi thử lại, hoặc gõ tên file để tìm ngay.`
-                    : `Không tìm thấy ảnh phù hợp "${query}" trong ${pool.length} ảnh (${indexedCount} đã học).`
+                mode: 'drive',
+                images: highConf,
+                summary: highConf.length
+                    ? `Tìm thấy ${highConf.length} ảnh (Drive search).`
+                    : `Không tìm thấy ảnh phù hợp "${query}". Thử từ khóa khác.`
             };
         }
 
         if (onProgress) {
-            const batches = Math.ceil(candidates.length / GPT_MATCH_BATCH);
-            onProgress(`GPT-4o-mini kiểm tra ${candidates.length} ảnh (${batches} lô)...`);
+            onProgress(`GPT-4o-mini xác minh ${candidates.length} ảnh (tối đa ${GPT_VERIFY_CAP})...`);
         }
 
         try {
@@ -1612,17 +1677,33 @@
                     summary: verified.summary || `GPT chọn ${verified.images.length} ảnh khớp "${query}".`
                 };
             }
+            // GPT found nothing — fallback to high-conf Drive results
+            if (highConf.length) {
+                return {
+                    mode: 'drive',
+                    images: highConf,
+                    summary: `GPT không chắc — hiển thị ${highConf.length} ảnh từ Drive search.`
+                };
+            }
             return {
                 mode: 'vision',
                 images: [],
-                summary: verified.summary || `GPT không thấy ảnh nào thật sự liên quan "${query}".`
+                summary: verified.summary || `Không tìm thấy ảnh phù hợp "${query}".`
             };
         } catch (error) {
             console.warn('GPT verify failed:', error);
+            // Rate limit or error → fallback to Drive results
+            if (highConf.length) {
+                return {
+                    mode: 'drive',
+                    images: highConf,
+                    summary: `GPT tạm thời giới hạn — hiển thị ${highConf.length} ảnh từ Drive search.`
+                };
+            }
             return {
                 mode: 'error',
-                images: [],
-                summary: `GPT lỗi: ${error.message || 'key/quota'}. Kiểm tra OpenAI API key.`
+                images: merged.slice(0, 20),
+                summary: `GPT lỗi tạm thời. Hiển thị kết quả Drive search.`
             };
         }
     }
