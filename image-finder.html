@@ -310,6 +310,62 @@
             }
         }
 
+        .search-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #737686;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 8px;
+        }
+
+        .search-label-icon {
+            font-size: 15px !important;
+        }
+
+        .ai-label {
+            color: #6b21a8;
+        }
+
+        .ai-search-divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 14px 0 12px;
+        }
+
+        .ai-search-or-line {
+            flex: 1;
+            height: 1px;
+            background: #e1e2ea;
+        }
+
+        .ai-search-or-text {
+            font-size: 11px;
+            color: #a0a1b0;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .ai-search-input {
+            background: linear-gradient(white, white) padding-box,
+                        linear-gradient(135deg, #7c3aed, #004ac6) border-box;
+            border: 1.5px solid transparent !important;
+        }
+
+        .ai-search-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+        }
+
+        .ai-search-btn {
+            background: linear-gradient(135deg, #7c3aed, #004ac6);
+            color: white;
+        }
+
         .search-form {
             display: flex;
             gap: 12px;
@@ -874,23 +930,57 @@
     </div>
 
     <div class="search-section">
-        <form id="chatForm" class="search-form">
+        <!-- Quick search: filename / keyword -->
+        <div class="search-label">
+            <span class="material-symbols-outlined search-label-icon">manage_search</span>
+            <span>Tìm nhanh theo tên file hoặc từ khóa</span>
+        </div>
+        <form id="quickSearchForm" class="search-form">
             <input
                 type="text"
-                id="promptInput"
-                placeholder="Mô tả ảnh: sự kiện Tết, team building, menu nhà hàng, logo..."
+                id="quickInput"
+                placeholder="Tên file, mã ảnh, từ khóa... (tức thì, không tốn API)"
                 class="w-full bg-surface-container-low border-none rounded-full px-6 py-3.5 focus:ring-2 focus:ring-primary/20 transition-all text-sm"
                 autocomplete="off"
             />
             <button
                 type="submit"
-                class="shrink-0 bg-primary text-on-primary px-5 py-3.5 rounded-full hover:opacity-90 transition-opacity flex items-center gap-2 font-semibold text-sm"
-                id="sendBtn"
+                class="shrink-0 bg-surface-container text-on-surface-variant px-5 py-3.5 rounded-full hover:bg-surface-container-high transition flex items-center gap-2 font-semibold text-sm border border-outline-variant"
+                id="quickBtn"
             >
                 <span class="material-symbols-outlined">search</span>
                 <span class="hidden sm:inline">Tìm</span>
             </button>
         </form>
+
+        <!-- AI search: describe image content -->
+        <div class="ai-search-divider">
+            <span class="ai-search-or-line"></span>
+            <span class="ai-search-or-text">hoặc tìm bằng AI</span>
+            <span class="ai-search-or-line"></span>
+        </div>
+        <div class="search-label ai-label">
+            <span class="material-symbols-outlined search-label-icon">psychology</span>
+            <span>Mô tả nội dung ảnh — AI hiểu ngữ nghĩa, tìm trong toàn bộ thư viện</span>
+        </div>
+        <form id="chatForm" class="search-form">
+            <input
+                type="text"
+                id="promptInput"
+                placeholder="VD: tiệc tất niên, quảng cáo giảm cân, menu bún bò, ảnh chụp ngoài trời..."
+                class="w-full border-none rounded-full px-6 py-3.5 focus:ring-2 transition-all text-sm ai-search-input"
+                autocomplete="off"
+            />
+            <button
+                type="submit"
+                class="shrink-0 ai-search-btn px-5 py-3.5 rounded-full hover:opacity-90 transition-opacity flex items-center gap-2 font-semibold text-sm"
+                id="sendBtn"
+            >
+                <span class="material-symbols-outlined">auto_awesome</span>
+                <span class="hidden sm:inline">AI Tìm</span>
+            </button>
+        </form>
+
         <div id="statusBanner" class="status-banner hidden"></div>
     </div>
 
@@ -1394,6 +1484,43 @@
     function scoreImage(image, query) {
         const keywords = normalizeText(query).split(/\s+/).filter(Boolean);
         return scoreImageKeywords(image, keywords);
+    }
+
+    // Quick search: filename + Drive full-text only, no AI
+    async function searchByFilenameAndDrive(query) {
+        const pool = (isScopedSearch && currentFolderImages.length) ? currentFolderImages : allDriveImages;
+        const poolIds = new Set(pool.map((img) => img.id));
+
+        // Instant filename match
+        const instant = searchInstant(pool, query);
+        if (instant.length) {
+            return { mode: 'instant', images: instant, summary: `Tìm thấy ${instant.length} ảnh tên chứa "${query}".` };
+        }
+
+        // Local filename scoring
+        const local = searchImagesLocal(query).filter((img) => poolIds.has(img.id));
+
+        // Drive full-text (OCR + metadata)
+        const keywords = normalizeText(query).split(/\s+/).filter((w) => w.length > 1 && !STOP_WORDS.has(w));
+        const driveHits = keywords.length
+            ? await searchDriveByKeywords(keywords).catch(() => [])
+            : [];
+        const driveFiltered = driveHits.filter((img) => poolIds.has(img.id));
+
+        // Merge: Drive results first (OCR), then local filename scores
+        const seen = new Set();
+        const merged = [];
+        [...driveFiltered, ...local].forEach((img) => {
+            if (!seen.has(img.id)) { seen.add(img.id); merged.push(img); }
+        });
+
+        return {
+            mode: 'drive',
+            images: merged,
+            summary: merged.length
+                ? `Tìm thấy ${merged.length} ảnh theo tên/từ khóa "${query}".`
+                : `Không tìm thấy ảnh nào tên/nội dung có "${query}".`
+        };
     }
 
     function searchImagesLocal(query) {
@@ -2275,6 +2402,31 @@
         if (!isScopedSearch) updateStatus('', 'success');
     });
 
+    document.getElementById('quickSearchForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const query = document.getElementById('quickInput').value.trim();
+        if (!query || !allDriveImages.length) return;
+
+        document.getElementById('quickBtn').disabled = true;
+        const scopeLabel = isScopedSearch && currentFolderName ? ` trong "${currentFolderName}"` : '';
+        updateStatus(`Đang tìm: "${query}"${scopeLabel}...`, 'loading');
+
+        try {
+            const result = await searchByFilenameAndDrive(query);
+            isSearchMode = true;
+            currentFolderId = null;
+            document.getElementById('galleryTitle').textContent = `Kết quả: "${query}"`;
+            renderGallery(result.images, `${result.images.length} ảnh · Tìm nhanh`);
+            setBackBtn(true, 'Tất cả thư mục');
+            updateStatus(result.summary, result.images.length ? 'success' : 'error');
+        } catch (err) {
+            updateStatus('Có lỗi khi tìm kiếm. Vui lòng thử lại.', 'error');
+        }
+
+        document.getElementById('quickInput').value = '';
+        document.getElementById('quickBtn').disabled = false;
+    });
+
     document.getElementById('chatForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -2291,7 +2443,7 @@
 
             isSearchMode = true;
             currentFolderId = null;
-            const modeLabel = result.mode === 'instant' ? 'Tức thì' : result.mode === 'vision' ? 'GPT-4o-mini' : result.mode === 'index' ? 'AI Index' : 'Lỗi';
+            const modeLabel = result.mode === 'instant' ? 'Tức thì' : result.mode === 'semantic' ? 'Vector AI' : result.mode === 'vision' ? 'GPT-4o-mini' : result.mode === 'drive' ? 'Drive Search' : 'AI';
             document.getElementById('galleryTitle').textContent = `Kết quả: "${prompt}"`;
             renderGallery(result.images, `${result.images.length} ảnh · ${modeLabel}`);
             setBackBtn(true, 'Tất cả thư mục');
