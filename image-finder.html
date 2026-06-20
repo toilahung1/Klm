@@ -160,9 +160,105 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
-            padding: 14px 24px;
+            gap: 8px;
+            padding: 10px 16px;
             background: white;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .sort-select {
+            border: 1.5px solid #e1e2ea;
+            border-radius: 8px;
+            padding: 5px 8px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #3d3f52;
+            background: #f6f7fb;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .scope-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 10px;
+            border-radius: 8px;
+            border: 1.5px solid #e1e2ea;
+            background: #f6f7fb;
+            color: #3d3f52;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .scope-btn.active {
+            background: #e8edff;
+            border-color: #004ac6;
+            color: #004ac6;
+        }
+
+        /* Index progress bar */
+        .index-progress-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            background: white;
+            border-top: 1px solid #e1e2ea;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            color: #3d3f52;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .index-progress-bar.visible {
+            transform: translateY(0);
+        }
+
+        .index-progress-bar .bar-track {
+            flex: 1;
+            height: 6px;
+            background: #e1e2ea;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .index-progress-bar .bar-fill {
+            height: 100%;
+            background: #004ac6;
+            border-radius: 999px;
+            transition: width 0.5s ease;
+        }
+
+        /* Mobile responsive fixes */
+        @media (max-width: 640px) {
+            .app-toolbar { padding: 12px 16px; gap: 8px; }
+            .search-section { padding: 12px 16px; }
+            .gallery-toolbar { padding: 8px 12px; }
+            .gallery-grid { padding: 12px; gap: 10px; }
+            .gallery-grid:has(.folder-card) {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+            .folder-actions { gap: 4px; }
+            .folder-action-btn { padding: 5px 6px; font-size: 10px; }
+            .modal-content { padding: 20px; border-radius: 12px; }
+            .modal-action-row { gap: 6px; }
+            .modal-action-btn { padding: 9px 10px; font-size: 12px; min-width: 80px; }
+            .share-dialog { padding: 20px; }
         }
 
         .chat-messages {
@@ -739,6 +835,13 @@
 <!-- Toast notification -->
 <div id="copyToast" class="copy-toast"></div>
 
+<!-- Index progress bar -->
+<div id="indexProgressBar" class="index-progress-bar">
+    <span class="material-symbols-outlined" style="font-size:16px;color:#004ac6;flex-shrink:0;">psychology</span>
+    <div class="bar-track"><div class="bar-fill" id="indexBarFill" style="width:0%"></div></div>
+    <span id="indexBarText" style="flex-shrink:0;min-width:80px;text-align:right;"></span>
+</div>
+
 <!-- App Screen -->
 <div id="chatScreen" class="hidden chat-container">
     <div class="app-toolbar">
@@ -779,10 +882,8 @@
         <div class="gallery-panel">
             <div class="gallery-toolbar">
                 <div style="display:flex;align-items:center;gap:0;min-width:0;flex:1;">
-                    <!-- Breadcrumb back button — hidden in root folder view -->
                     <button type="button" id="backBtn"
-                        class="hidden items-center gap-1 mr-3 text-sm font-semibold text-primary hover:opacity-80 shrink-0"
-                        style="display:none;">
+                        style="display:none;align-items:center;gap:4px;margin-right:10px;font-size:13px;font-weight:600;color:#004ac6;cursor:pointer;border:none;background:none;flex-shrink:0;padding:0;">
                         <span class="material-symbols-outlined" style="font-size:18px;">arrow_back</span>
                         <span id="backBtnLabel">Tất cả thư mục</span>
                     </button>
@@ -791,7 +892,19 @@
                         <p class="text-xs text-on-surface-variant" id="galleryStatus">Chưa tải ảnh</p>
                     </div>
                 </div>
-                <!-- keep old btn hidden, wired to same handler -->
+                <div class="toolbar-right">
+                    <!-- Search scope toggle — only shown inside a folder -->
+                    <button type="button" id="scopeSearchBtn" class="scope-btn hidden">
+                        <span class="material-symbols-outlined" style="font-size:14px;">folder_open</span>
+                        <span id="scopeBtnLabel">Tìm trong folder</span>
+                    </button>
+                    <!-- Sort — only in folder list view -->
+                    <select id="sortSelect" class="sort-select hidden">
+                        <option value="name">Tên A→Z</option>
+                        <option value="count">Nhiều ảnh nhất</option>
+                        <option value="newest">Ảnh mới nhất</option>
+                    </select>
+                </div>
                 <button type="button" id="showAllBtn" class="hidden"></button>
             </div>
             <div id="driveGallery" class="gallery-grid">
@@ -827,7 +940,36 @@
     let currentAccessToken = null;
     let folderMap = new Map();       // folderId → {id, name}
     let currentFolderId = null;      // null = folder view, string = inside folder
-    let isSearchMode = false;        // true khi đang hiển thị kết quả search
+    let currentFolderImages = [];    // images in the current open folder
+    let currentFolderName = '';
+    let isSearchMode = false;
+    let isScopedSearch = false;      // true = search only in current folder
+    let currentSort = 'name';        // folder sort: name | count | newest
+
+    // ── Drive image cache (localStorage, TTL 30min) ───────────────────────
+    const DRIVE_CACHE_KEY = 'klm_drive_cache_v1';
+    const DRIVE_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+
+    function saveDriveCache(images, folders) {
+        try {
+            const payload = { images, folders: [...folders.entries()], ts: Date.now() };
+            localStorage.setItem(DRIVE_CACHE_KEY, JSON.stringify(payload));
+        } catch (_) {}
+    }
+
+    function loadDriveCache(userEmail) {
+        try {
+            const raw = localStorage.getItem(DRIVE_CACHE_KEY);
+            if (!raw) return null;
+            const p = JSON.parse(raw);
+            if (!p.ts || Date.now() - p.ts > DRIVE_CACHE_TTL) return null;
+            return { images: p.images || [], folders: new Map(p.folders || []) };
+        } catch (_) { return null; }
+    }
+
+    function clearDriveCache() {
+        try { localStorage.removeItem(DRIVE_CACHE_KEY); } catch (_) {}
+    }
 
     function getDriveErrorMessage(error) {
         const status = error?.status || error?.result?.error?.code;
@@ -1057,6 +1199,7 @@
     }
 
     function refreshGalleryStatus() {
+        updateProgressBar();
         if (isSearchMode || currentFolderId) return;
         const statusEl = document.getElementById('galleryStatus');
         if (allDriveImages.length) {
@@ -1400,9 +1543,9 @@
         }
     }
 
-    async function searchImagesSmart(query, onProgress) {
+    async function searchImagesSmart(query, onProgress, overridePool = null) {
         const filters = parseQueryFilters(query);
-        let pool = allDriveImages;
+        let pool = overridePool || allDriveImages;
 
         if (filters.months.length) pool = filterImagesByDate(pool, filters.months);
         if (filters.year) pool = filterImagesByYear(pool, filters.year);
@@ -1521,21 +1664,33 @@
 
     function setBackBtn(show, label) {
         const btn = document.getElementById('backBtn');
-        if (show) {
-            btn.style.display = 'flex';
-            document.getElementById('backBtnLabel').textContent = label || 'Tất cả thư mục';
-        } else {
-            btn.style.display = 'none';
-        }
+        btn.style.display = show ? 'flex' : 'none';
+        if (show) document.getElementById('backBtnLabel').textContent = label || 'Tất cả thư mục';
+    }
+
+    function updateProgressBar() {
+        const bar = document.getElementById('indexProgressBar');
+        const fill = document.getElementById('indexBarFill');
+        const text = document.getElementById('indexBarText');
+        const total = indexProgress.total || allDriveImages.length;
+        if (!isIndexing || !total) { bar.classList.remove('visible'); return; }
+        const pct = Math.round((indexProgress.done / total) * 100);
+        bar.classList.add('visible');
+        fill.style.width = pct + '%';
+        text.textContent = `AI học: ${indexProgress.done}/${total} ảnh`;
     }
 
     function renderFolderView() {
         isSearchMode = false;
+        isScopedSearch = false;
         currentFolderId = null;
+        currentFolderImages = [];
         const gallery = document.getElementById('driveGallery');
         const statusEl = document.getElementById('galleryStatus');
         document.getElementById('showAllBtn').classList.add('hidden');
         document.getElementById('galleryTitle').textContent = 'Thư viện Google Drive';
+        document.getElementById('scopeSearchBtn').classList.add('hidden');
+        document.getElementById('sortSelect').classList.remove('hidden');
         setBackBtn(false);
 
         // Group images by parent folder
@@ -1557,9 +1712,23 @@
 
         gallery.innerHTML = '';
 
-        // Render each folder card
+        // Build sorted folder list
+        let folderList = [];
         folderImages.forEach((images, folderId) => {
             const folderName = folderMap.get(folderId) || 'Thư mục';
+            const newestTs = Math.max(...images.map((img) => new Date(img.createdTime || 0).getTime()));
+            folderList.push({ folderId, folderName, images, newestTs });
+        });
+
+        if (currentSort === 'name') {
+            folderList.sort((a, b) => a.folderName.localeCompare(b.folderName, 'vi'));
+        } else if (currentSort === 'count') {
+            folderList.sort((a, b) => b.images.length - a.images.length);
+        } else if (currentSort === 'newest') {
+            folderList.sort((a, b) => b.newestTs - a.newestTs);
+        }
+
+        folderList.forEach(({ folderId, folderName, images }) => {
             gallery.appendChild(createFolderCard(folderId, folderName, images));
         });
 
@@ -1643,13 +1812,23 @@
 
     function openFolderView(folderId, folderName, images) {
         isSearchMode = false;
+        isScopedSearch = false;
         currentFolderId = folderId;
+        currentFolderImages = images;
+        currentFolderName = folderName;
         const gallery = document.getElementById('driveGallery');
         const statusEl = document.getElementById('galleryStatus');
 
         document.getElementById('galleryTitle').textContent = folderName;
         statusEl.textContent = `${images.length} ảnh`;
         setBackBtn(true, 'Tất cả thư mục');
+        document.getElementById('sortSelect').classList.add('hidden');
+
+        // Show scope search button
+        const scopeBtn = document.getElementById('scopeSearchBtn');
+        scopeBtn.classList.remove('hidden');
+        scopeBtn.classList.remove('active');
+        document.getElementById('scopeBtnLabel').textContent = 'Tìm trong folder';
 
         gallery.innerHTML = '';
         images.forEach((image) => {
@@ -1819,21 +1998,55 @@
         if (isLoadingDrive || !currentAccessToken) return;
 
         isLoadingDrive = true;
-        document.getElementById('galleryStatus').textContent = 'Đang tải ảnh...';
-        updateStatus('Đang quét ảnh trong Google Drive...', 'loading');
+        updateStatus('Đang tải ảnh...', 'loading');
 
         try {
-            allDriveImages = await fetchDriveImages(currentAccessToken);
             await loadIndexFromDb();
 
+            // Try cache first for instant display
+            const cached = loadDriveCache();
+            if (cached && cached.images.length > 0) {
+                allDriveImages = cached.images;
+                folderMap = cached.folders;
+                renderFolderView();
+                const indexedCount = allDriveImages.filter(isImageIndexed).length;
+                updateStatus(`Đã tải ${allDriveImages.length} ảnh (cache). Đang kiểm tra ảnh mới...`, 'success');
+                runBackgroundIndexing(allDriveImages);
+
+                // Refresh in background to detect new images
+                fetchDriveImages(currentAccessToken).then(async (freshImages) => {
+                    const newIds = new Set(freshImages.map((img) => img.id));
+                    const oldIds = new Set(allDriveImages.map((img) => img.id));
+                    const hasNew = freshImages.some((img) => !oldIds.has(img.id));
+                    const hasRemoved = allDriveImages.some((img) => !newIds.has(img.id));
+
+                    if (hasNew || hasRemoved) {
+                        allDriveImages = freshImages;
+                        const parentIds = [...new Set(freshImages.map((img) => img.parents?.[0]).filter(Boolean))];
+                        const names = await fetchFolderNames(currentAccessToken, parentIds);
+                        names.forEach((name, id) => folderMap.set(id, name));
+                        saveDriveCache(allDriveImages, folderMap);
+                        renderFolderView();
+                        const added = freshImages.filter((img) => !oldIds.has(img.id)).length;
+                        updateStatus(`Tìm thấy ${added} ảnh mới! Tổng: ${allDriveImages.length} ảnh.`, 'success');
+                        runBackgroundIndexing(allDriveImages);
+                    } else {
+                        updateStatus(`${allDriveImages.length} ảnh · ${folderMap.size} thư mục — không có ảnh mới.`, 'success');
+                    }
+                }).catch(() => {});
+                return;
+            }
+
+            // No cache — full fetch
+            document.getElementById('galleryStatus').textContent = 'Đang quét Drive...';
+            allDriveImages = await fetchDriveImages(currentAccessToken);
+
             if (allDriveImages.length > 0) {
-                // Collect unique parent folder IDs
-                const parentIds = [...new Set(
-                    allDriveImages.map((img) => img.parents?.[0]).filter(Boolean)
-                )];
+                const parentIds = [...new Set(allDriveImages.map((img) => img.parents?.[0]).filter(Boolean))];
                 document.getElementById('galleryStatus').textContent = 'Đang tải tên thư mục...';
                 const names = await fetchFolderNames(currentAccessToken, parentIds);
                 names.forEach((name, id) => folderMap.set(id, name));
+                saveDriveCache(allDriveImages, folderMap);
 
                 renderFolderView();
                 updateStatus(`Đã tải ${allDriveImages.length} ảnh trong ${folderMap.size} thư mục. AI đang học nền — tìm kiếm dùng được ngay.`, 'success');
@@ -1864,6 +2077,19 @@
         renderFolderView(); updateStatus('', 'success');
     });
 
+    document.getElementById('sortSelect').addEventListener('change', (e) => {
+        currentSort = e.target.value;
+        renderFolderView();
+    });
+
+    document.getElementById('scopeSearchBtn').addEventListener('click', () => {
+        isScopedSearch = !isScopedSearch;
+        const btn = document.getElementById('scopeSearchBtn');
+        btn.classList.toggle('active', isScopedSearch);
+        document.getElementById('scopeBtnLabel').textContent = isScopedSearch ? 'Đang tìm trong folder' : 'Tìm trong folder';
+        if (!isScopedSearch) updateStatus('', 'success');
+    });
+
     document.getElementById('chatForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
@@ -1871,10 +2097,12 @@
         if (!prompt || !allDriveImages.length) return;
 
         document.getElementById('sendBtn').disabled = true;
-        updateStatus(`Đang tìm: "${prompt}"...`, 'loading');
+        const scopeLabel = isScopedSearch && currentFolderName ? ` trong "${currentFolderName}"` : '';
+        updateStatus(`Đang tìm: "${prompt}"${scopeLabel}...`, 'loading');
 
         try {
-            const result = await searchImagesSmart(prompt, (text) => updateStatus(text, 'loading'));
+            const searchPool = isScopedSearch && currentFolderImages.length ? currentFolderImages : null;
+            const result = await searchImagesSmart(prompt, (text) => updateStatus(text, 'loading'), searchPool);
 
             isSearchMode = true;
             currentFolderId = null;
@@ -1960,6 +2188,7 @@
 
     function logout() {
         clearSession();
+        clearDriveCache();
         const token = gapi.client.getToken();
         if (token?.access_token) {
             google.accounts.oauth2.revoke(token.access_token, () => {
