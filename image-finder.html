@@ -572,6 +572,23 @@
             margin-top: 1px;
         }
 
+        .section-divider {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 4px 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #737686;
+            border-top: 1px solid #e1e2ea;
+            margin-top: 8px;
+        }
+
+        .section-divider .material-symbols-outlined {
+            font-size: 16px;
+        }
+
         .ai-badge {
             display: inline-flex;
             align-items: center;
@@ -1004,7 +1021,7 @@
                         <span class="material-symbols-outlined" style="font-size:14px;">folder_open</span>
                         <span id="scopeBtnLabel">Tìm trong folder</span>
                     </button>
-                    <!-- Sort — only in folder list view -->
+                    <!-- Sort — folder list OR image grid -->
                     <select id="sortSelect" class="sort-select hidden">
                         <option value="name">Tên A→Z</option>
                         <option value="count">Nhiều ảnh nhất</option>
@@ -1052,7 +1069,8 @@
     let currentFolderName = '';
     let isSearchMode = false;
     let isScopedSearch = false;      // true = search only in current folder
-    let currentSort = 'name';        // folder sort: name | count | newest
+    let currentSort = 'name';         // folder list sort: name | count | newest
+    let currentImageSort = 'newest'; // image grid sort: newest | oldest | name
 
     // ── Vector math for semantic search ──────────────────────────────────
     function cosineSimilarity(a, b) {
@@ -1915,6 +1933,40 @@
         }
 
         gallery.innerHTML = '';
+        renderImageCards(gallery, images);
+    }
+
+    function setBackBtn(show, label) {
+        const btn = document.getElementById('backBtn');
+        btn.style.display = show ? 'flex' : 'none';
+        if (show) document.getElementById('backBtnLabel').textContent = label || 'Tất cả thư mục';
+    }
+
+    function updateProgressBar() {
+        const bar = document.getElementById('indexProgressBar');
+        const fill = document.getElementById('indexBarFill');
+        const text = document.getElementById('indexBarText');
+        const total = indexProgress.total || allDriveImages.length;
+        if (!isIndexing || !total) { bar.classList.remove('visible'); return; }
+        const pct = Math.round((indexProgress.done / total) * 100);
+        bar.classList.add('visible');
+        fill.style.width = pct + '%';
+        text.textContent = `AI học: ${indexProgress.done}/${total} ảnh`;
+    }
+
+    function sortImageList(images, sortKey) {
+        const sorted = [...images];
+        if (sortKey === 'newest') {
+            sorted.sort((a, b) => new Date(b.createdTime || 0) - new Date(a.createdTime || 0));
+        } else if (sortKey === 'oldest') {
+            sorted.sort((a, b) => new Date(a.createdTime || 0) - new Date(b.createdTime || 0));
+        } else if (sortKey === 'name') {
+            sorted.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'vi'));
+        }
+        return sorted;
+    }
+
+    function renderImageCards(gallery, images) {
         images.forEach((image) => {
             const item = document.createElement('div');
             item.className = 'gallery-item';
@@ -1944,24 +1996,6 @@
         });
     }
 
-    function setBackBtn(show, label) {
-        const btn = document.getElementById('backBtn');
-        btn.style.display = show ? 'flex' : 'none';
-        if (show) document.getElementById('backBtnLabel').textContent = label || 'Tất cả thư mục';
-    }
-
-    function updateProgressBar() {
-        const bar = document.getElementById('indexProgressBar');
-        const fill = document.getElementById('indexBarFill');
-        const text = document.getElementById('indexBarText');
-        const total = indexProgress.total || allDriveImages.length;
-        if (!isIndexing || !total) { bar.classList.remove('visible'); return; }
-        const pct = Math.round((indexProgress.done / total) * 100);
-        bar.classList.add('visible');
-        fill.style.width = pct + '%';
-        text.textContent = `AI học: ${indexProgress.done}/${total} ảnh`;
-    }
-
     function renderFolderView() {
         isSearchMode = false;
         isScopedSearch = false;
@@ -1972,11 +2006,19 @@
         document.getElementById('showAllBtn').classList.add('hidden');
         document.getElementById('galleryTitle').textContent = 'Thư viện Google Drive';
         document.getElementById('scopeSearchBtn').classList.add('hidden');
-        document.getElementById('sortSelect').classList.remove('hidden');
         setBackBtn(false);
 
+        // Switch sortSelect to folder-list mode
+        const sortSel = document.getElementById('sortSelect');
+        sortSel.innerHTML = `
+            <option value="name"${currentSort==='name'?' selected':''}>Tên A→Z</option>
+            <option value="count"${currentSort==='count'?' selected':''}>Nhiều ảnh nhất</option>
+            <option value="newest"${currentSort==='newest'?' selected':''}>Folder mới nhất</option>
+        `;
+        sortSel.classList.remove('hidden');
+
         // Group images by parent folder
-        const folderImages = new Map(); // folderId → image[]
+        const folderImages = new Map();
         const noFolderImages = [];
 
         allDriveImages.forEach((image) => {
@@ -1989,7 +2031,7 @@
             }
         });
 
-        const folderCount = folderImages.size + (noFolderImages.length ? 1 : 0);
+        const folderCount = folderImages.size;
         statusEl.textContent = `${folderCount} thư mục · ${allDriveImages.length} ảnh`;
 
         gallery.innerHTML = '';
@@ -2016,8 +2058,13 @@
             gallery.appendChild(createFolderCard(folderId, folderName, images, folderCreatedTime));
         });
 
+        // Show images not in any folder directly as image cards (with section header)
         if (noFolderImages.length) {
-            gallery.appendChild(createFolderCard('__root__', 'Drive của tôi', noFolderImages));
+            const divider = document.createElement('div');
+            divider.className = 'section-divider';
+            divider.innerHTML = `<span class="material-symbols-outlined">image</span> ${noFolderImages.length} ảnh không thuộc thư mục nào`;
+            gallery.appendChild(divider);
+            renderImageCards(gallery, sortImageList(noFolderImages, currentImageSort));
         }
     }
 
@@ -2123,9 +2170,16 @@
         const statusEl = document.getElementById('galleryStatus');
 
         document.getElementById('galleryTitle').textContent = folderName;
-        statusEl.textContent = `${images.length} ảnh`;
         setBackBtn(true, 'Tất cả thư mục');
-        document.getElementById('sortSelect').classList.add('hidden');
+
+        // Switch sortSelect to image-sort mode
+        const sortSel = document.getElementById('sortSelect');
+        sortSel.innerHTML = `
+            <option value="newest"${currentImageSort==='newest'?' selected':''}>Mới nhất trước</option>
+            <option value="oldest"${currentImageSort==='oldest'?' selected':''}>Cũ nhất trước</option>
+            <option value="name"${currentImageSort==='name'?' selected':''}>Tên A→Z</option>
+        `;
+        sortSel.classList.remove('hidden');
 
         // Show scope search button
         const scopeBtn = document.getElementById('scopeSearchBtn');
@@ -2133,34 +2187,11 @@
         scopeBtn.classList.remove('active');
         document.getElementById('scopeBtnLabel').textContent = 'Tìm trong folder';
 
+        const sorted = sortImageList(images, currentImageSort);
+        statusEl.textContent = `${images.length} ảnh · ${currentImageSort === 'newest' ? 'Mới nhất trước' : currentImageSort === 'oldest' ? 'Cũ nhất trước' : 'Tên A→Z'}`;
+
         gallery.innerHTML = '';
-        images.forEach((image) => {
-            const item = document.createElement('div');
-            item.className = 'gallery-item';
-            item.onclick = () => openImageModal(image);
-
-            const img = document.createElement('img');
-            img.src = getThumbnailUrl(image);
-            img.alt = image.name;
-            img.loading = 'lazy';
-
-            const label = document.createElement('div');
-            label.className = 'gallery-item-label';
-
-            const nameEl = document.createElement('div');
-            nameEl.className = 'gallery-item-name';
-            nameEl.textContent = image.name;
-
-            const dateEl = document.createElement('div');
-            dateEl.className = 'gallery-item-date';
-            dateEl.textContent = formatDate(image.createdTime);
-
-            label.appendChild(nameEl);
-            if (dateEl.textContent) label.appendChild(dateEl);
-            item.appendChild(img);
-            item.appendChild(label);
-            gallery.appendChild(item);
-        });
+        renderImageCards(gallery, sorted);
     }
 
     function waitForGoogleLibs() {
@@ -2390,8 +2421,16 @@
     });
 
     document.getElementById('sortSelect').addEventListener('change', (e) => {
-        currentSort = e.target.value;
-        renderFolderView();
+        const val = e.target.value;
+        if (currentFolderId !== null) {
+            // Inside a folder — sort images
+            currentImageSort = val;
+            openFolderView(currentFolderId, currentFolderName, currentFolderImages);
+        } else {
+            // Folder list — sort folders
+            currentSort = val;
+            renderFolderView();
+        }
     });
 
     document.getElementById('scopeSearchBtn').addEventListener('click', () => {
