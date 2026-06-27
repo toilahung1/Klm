@@ -1653,39 +1653,16 @@
     }
 
     // Quick search: filename + Drive full-text only, no AI
-    async function searchByFilenameAndDrive(query) {
+    function searchByFilename(query) {
         const pool = (isScopedSearch && currentFolderImages.length) ? currentFolderImages : allDriveImages;
-        const poolIds = new Set(pool.map((img) => img.id));
-
-        // Instant filename match
-        const instant = searchInstant(pool, query);
-        if (instant.length) {
-            return { mode: 'instant', images: instant, summary: `Tìm thấy ${instant.length} ảnh tên chứa "${query}".` };
-        }
-
-        // Local filename scoring
-        const local = searchImagesLocal(query).filter((img) => poolIds.has(img.id));
-
-        // Drive full-text (OCR + metadata)
-        const keywords = normalizeText(query).split(/\s+/).filter((w) => w.length > 1 && !STOP_WORDS.has(w));
-        const driveHits = keywords.length
-            ? await searchDriveByKeywords(keywords).catch(() => [])
-            : [];
-        const driveFiltered = driveHits.filter((img) => poolIds.has(img.id));
-
-        // Merge: Drive results first (OCR), then local filename scores
-        const seen = new Set();
-        const merged = [];
-        [...driveFiltered, ...local].forEach((img) => {
-            if (!seen.has(img.id)) { seen.add(img.id); merged.push(img); }
-        });
-
+        const q = normalizeText(query);
+        const results = pool.filter((img) => normalizeText(img.name || '').includes(q));
         return {
-            mode: 'drive',
-            images: merged,
-            summary: merged.length
-                ? `Tìm thấy ${merged.length} ảnh theo tên/từ khóa "${query}".`
-                : `Không tìm thấy ảnh nào tên/nội dung có "${query}".`
+            mode: 'instant',
+            images: results,
+            summary: results.length
+                ? `Tìm thấy ${results.length} ảnh tên chứa "${query}".`
+                : `Không có file nào tên chứa "${query}".`
         };
     }
 
@@ -2732,29 +2709,19 @@
         if (!isScopedSearch) updateStatus('', 'success');
     });
 
-    document.getElementById('quickSearchForm').addEventListener('submit', async (e) => {
+    document.getElementById('quickSearchForm').addEventListener('submit', (e) => {
         e.preventDefault();
         const query = document.getElementById('quickInput').value.trim();
         if (!query || !allDriveImages.length) return;
 
-        document.getElementById('quickBtn').disabled = true;
-        const scopeLabel = isScopedSearch && currentFolderName ? ` trong "${currentFolderName}"` : '';
-        updateStatus(`Đang tìm: "${query}"${scopeLabel}...`, 'loading');
-
-        try {
-            const result = await searchByFilenameAndDrive(query);
-            isSearchMode = true;
-            currentFolderId = null;
-            document.getElementById('galleryTitle').textContent = `Kết quả: "${query}"`;
-            renderGallery(result.images, `${result.images.length} ảnh · Tìm nhanh`);
-            setBackBtn(true, 'Tất cả thư mục');
-            updateStatus(result.summary, result.images.length ? 'success' : 'error');
-        } catch (err) {
-            updateStatus('Có lỗi khi tìm kiếm. Vui lòng thử lại.', 'error');
-        }
-
+        const result = searchByFilename(query);
+        isSearchMode = true;
+        currentFolderId = null;
+        document.getElementById('galleryTitle').textContent = `Kết quả: "${query}"`;
+        renderGallery(result.images, `${result.images.length} ảnh · Tên file`);
+        setBackBtn(true, 'Tất cả thư mục');
+        updateStatus(result.summary, result.images.length ? 'success' : 'error');
         document.getElementById('quickInput').value = '';
-        document.getElementById('quickBtn').disabled = false;
     });
 
     document.getElementById('chatForm').addEventListener('submit', async (e) => {
