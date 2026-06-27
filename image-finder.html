@@ -10,6 +10,7 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script async defer src="https://apis.google.com/js/api.js"></script>
     <script async defer src="https://accounts.google.com/gsi/client"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.js"></script>
     <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
@@ -572,6 +573,111 @@
             margin-top: 1px;
         }
 
+        /* Face search button */
+        .face-search-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            border: 1.5px solid #7c3aed;
+            background: #faf5ff;
+            color: #7c3aed;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+        .face-search-btn:hover { background: #ede9fe; }
+
+        /* Face modal */
+        .face-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .face-modal-overlay.hidden { display: none; }
+
+        .face-modal {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .face-modal-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .face-modal-header h3 { flex: 1; font-size: 16px; font-weight: 700; }
+        .face-modal-close {
+            background: none; border: none; cursor: pointer;
+            color: #737686; padding: 4px;
+        }
+
+        .face-upload-area {
+            border: 2px dashed #d1d5db;
+            border-radius: 14px;
+            padding: 28px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.15s, background 0.15s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        .face-upload-area:hover { border-color: #7c3aed; background: #faf5ff; }
+        .face-upload-area p { font-size: 13px; color: #4b5563; margin: 0; }
+
+        .face-preview-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 0;
+        }
+        .face-preview-area.hidden { display: none; }
+
+        .face-progress { margin: 12px 0; }
+        .face-progress.hidden { display: none; }
+        .face-progress-bar {
+            height: 6px; border-radius: 3px;
+            background: #e5e7eb; overflow: hidden;
+        }
+        .face-progress-fill {
+            height: 100%; background: linear-gradient(90deg, #7c3aed, #004ac6);
+            border-radius: 3px; transition: width 0.3s;
+            width: 0%;
+        }
+
+        .face-modal-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .face-run-btn {
+            flex: 1;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 11px;
+            background: linear-gradient(135deg, #7c3aed, #004ac6);
+            color: white; border: none; border-radius: 12px;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            transition: opacity 0.15s;
+        }
+        .face-run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .face-run-btn:not(:disabled):hover { opacity: 0.9; }
+
         .section-divider {
             grid-column: 1 / -1;
             display: flex;
@@ -1016,6 +1122,11 @@
                     </div>
                 </div>
                 <div class="toolbar-right">
+                    <!-- Face search — only shown inside a folder -->
+                    <button type="button" id="faceSearchBtn" class="face-search-btn hidden">
+                        <span class="material-symbols-outlined" style="font-size:15px;">face_retouching_natural</span>
+                        <span>Tìm theo mặt</span>
+                    </button>
                     <!-- Search scope toggle — only shown inside a folder -->
                     <button type="button" id="scopeSearchBtn" class="scope-btn hidden">
                         <span class="material-symbols-outlined" style="font-size:14px;">folder_open</span>
@@ -1033,6 +1144,43 @@
             <div id="driveGallery" class="gallery-grid">
                 <div class="gallery-empty">Đăng nhập Gmail để xem ảnh trong Drive</div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Face Search Modal -->
+<div id="faceModal" class="face-modal-overlay hidden">
+    <div class="face-modal">
+        <div class="face-modal-header">
+            <span class="material-symbols-outlined" style="color:#7c3aed">face_retouching_natural</span>
+            <h3>Tìm theo khuôn mặt</h3>
+            <button onclick="closeFaceModal()" class="face-modal-close">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+
+        <div id="faceUploadArea" class="face-upload-area" onclick="document.getElementById('faceFileInput').click()">
+            <span class="material-symbols-outlined" style="font-size:40px;color:#9ca3af">add_photo_alternate</span>
+            <p>Click để chọn ảnh chứa khuôn mặt cần tìm</p>
+            <p style="font-size:11px;color:#9ca3af">JPG, PNG — ảnh chân dung rõ mặt cho kết quả tốt nhất</p>
+            <input type="file" id="faceFileInput" accept="image/*" style="display:none">
+        </div>
+
+        <div id="facePreviewArea" class="face-preview-area hidden">
+            <img id="facePreviewImg" src="" alt="preview" style="max-height:160px;border-radius:12px;object-fit:contain;">
+            <div id="faceDetectStatus" style="font-size:12px;color:#737686;margin-top:6px;"></div>
+        </div>
+
+        <div id="faceProgress" class="face-progress hidden">
+            <div class="face-progress-bar"><div id="faceProgressFill" class="face-progress-fill"></div></div>
+            <p id="faceProgressText" style="font-size:12px;color:#737686;margin-top:6px;text-align:center;"></p>
+        </div>
+
+        <div class="face-modal-actions">
+            <button id="faceSearchRunBtn" onclick="runFaceSearch()" class="face-run-btn" disabled>
+                <span class="material-symbols-outlined">search</span> Bắt đầu tìm
+            </button>
+            <button onclick="closeFaceModal()" style="font-size:13px;color:#737686;background:none;border:none;cursor:pointer;">Huỷ</button>
         </div>
     </div>
 </div>
@@ -2006,6 +2154,7 @@
         document.getElementById('showAllBtn').classList.add('hidden');
         document.getElementById('galleryTitle').textContent = 'Thư viện Google Drive';
         document.getElementById('scopeSearchBtn').classList.add('hidden');
+        document.getElementById('faceSearchBtn').classList.add('hidden');
         setBackBtn(false);
 
         // Switch sortSelect to folder-list mode
@@ -2181,11 +2330,12 @@
         `;
         sortSel.classList.remove('hidden');
 
-        // Show scope search button
+        // Show scope search + face search buttons
         const scopeBtn = document.getElementById('scopeSearchBtn');
         scopeBtn.classList.remove('hidden');
         scopeBtn.classList.remove('active');
         document.getElementById('scopeBtnLabel').textContent = 'Tìm trong folder';
+        document.getElementById('faceSearchBtn').classList.remove('hidden');
 
         const sorted = sortImageList(images, currentImageSort);
         statusEl.textContent = `${images.length} ảnh · ${currentImageSort === 'newest' ? 'Mới nhất trước' : currentImageSort === 'oldest' ? 'Cũ nhất trước' : 'Tên A→Z'}`;
@@ -2432,6 +2582,147 @@
             renderFolderView();
         }
     });
+
+    // ── Face Search ──────────────────────────────────────────────────────
+    const FACE_MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/';
+    const FACE_MATCH_THRESHOLD = 0.55; // euclidean distance, lower = stricter
+    let faceModelsLoaded = false;
+    let faceModelsLoading = false;
+    let queryFaceDescriptor = null;
+
+    async function ensureFaceModels() {
+        if (faceModelsLoaded) return true;
+        if (faceModelsLoading) {
+            while (faceModelsLoading) await new Promise((r) => setTimeout(r, 100));
+            return faceModelsLoaded;
+        }
+        faceModelsLoading = true;
+        try {
+            await Promise.all([
+                faceapi.nets.ssdMobilenetv1.loadFromUri(FACE_MODEL_URL),
+                faceapi.nets.faceLandmark68Net.loadFromUri(FACE_MODEL_URL),
+                faceapi.nets.faceRecognitionNet.loadFromUri(FACE_MODEL_URL)
+            ]);
+            faceModelsLoaded = true;
+        } catch (e) {
+            console.error('Face model load error:', e);
+        } finally { faceModelsLoading = false; }
+        return faceModelsLoaded;
+    }
+
+    async function getDescriptorFromElement(el) {
+        const det = await faceapi.detectSingleFace(el, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 }))
+            .withFaceLandmarks().withFaceDescriptor();
+        return det?.descriptor || null;
+    }
+
+    async function loadImageCanvas(url) {
+        try {
+            const res = await fetch(url);
+            const blob = await res.blob();
+            const bmp = await createImageBitmap(blob);
+            const c = document.createElement('canvas');
+            c.width = bmp.width; c.height = bmp.height;
+            c.getContext('2d').drawImage(bmp, 0, 0);
+            return c;
+        } catch { return null; }
+    }
+
+    function openFaceModal() {
+        queryFaceDescriptor = null;
+        document.getElementById('faceFileInput').value = '';
+        document.getElementById('faceUploadArea').classList.remove('hidden');
+        document.getElementById('facePreviewArea').classList.add('hidden');
+        document.getElementById('faceProgress').classList.add('hidden');
+        document.getElementById('faceSearchRunBtn').disabled = true;
+        document.getElementById('faceDetectStatus').textContent = '';
+        document.getElementById('faceModal').classList.remove('hidden');
+    }
+
+    function closeFaceModal() {
+        document.getElementById('faceModal').classList.add('hidden');
+    }
+
+    document.getElementById('faceSearchBtn').addEventListener('click', openFaceModal);
+
+    document.getElementById('faceFileInput').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const url = URL.createObjectURL(file);
+        const previewImg = document.getElementById('facePreviewImg');
+        previewImg.src = url;
+        document.getElementById('faceUploadArea').classList.add('hidden');
+        document.getElementById('facePreviewArea').classList.remove('hidden');
+        document.getElementById('faceDetectStatus').textContent = 'Đang tải AI model lần đầu (~10s)...';
+        document.getElementById('faceSearchRunBtn').disabled = true;
+
+        const ok = await ensureFaceModels();
+        if (!ok) {
+            document.getElementById('faceDetectStatus').textContent = '❌ Không tải được model. Thử lại.';
+            return;
+        }
+
+        previewImg.onload = async () => {
+            document.getElementById('faceDetectStatus').textContent = 'Đang nhận diện khuôn mặt...';
+            const descriptor = await getDescriptorFromElement(previewImg);
+            if (!descriptor) {
+                document.getElementById('faceDetectStatus').textContent = '⚠️ Không tìm thấy khuôn mặt trong ảnh. Thử ảnh khác.';
+                return;
+            }
+            queryFaceDescriptor = descriptor;
+            document.getElementById('faceDetectStatus').textContent = '✅ Nhận diện thành công. Bấm "Bắt đầu tìm".';
+            document.getElementById('faceSearchRunBtn').disabled = false;
+        };
+        if (previewImg.complete) previewImg.onload();
+    });
+
+    async function runFaceSearch() {
+        if (!queryFaceDescriptor || !currentFolderImages.length) return;
+        const pool = currentFolderImages;
+
+        document.getElementById('faceSearchRunBtn').disabled = true;
+        document.getElementById('faceProgress').classList.remove('hidden');
+        const fill = document.getElementById('faceProgressFill');
+        const txt = document.getElementById('faceProgressText');
+
+        const matches = [];
+        for (let i = 0; i < pool.length; i++) {
+            const image = pool[i];
+            txt.textContent = `Đang kiểm tra ảnh ${i + 1}/${pool.length}...`;
+            fill.style.width = `${Math.round(((i + 1) / pool.length) * 100)}%`;
+
+            const url = getThumbnailUrl(image, 300);
+            const canvas = await loadImageCanvas(url);
+            if (!canvas) continue;
+
+            const detections = await faceapi.detectAllFaces(canvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 }))
+                .withFaceLandmarks().withFaceDescriptors();
+
+            for (const det of detections) {
+                const dist = faceapi.euclideanDistance(queryFaceDescriptor, det.descriptor);
+                if (dist < FACE_MATCH_THRESHOLD) {
+                    matches.push({ image, dist });
+                    break;
+                }
+            }
+        }
+
+        closeFaceModal();
+        matches.sort((a, b) => a.dist - b.dist);
+        const results = matches.map((m) => m.image);
+
+        isSearchMode = true;
+        document.getElementById('galleryTitle').textContent = `Kết quả: tìm theo khuôn mặt`;
+        renderGallery(results, `${results.length} ảnh · Face Search`);
+        setBackBtn(true, currentFolderName || 'Tất cả thư mục');
+        updateStatus(
+            results.length
+                ? `Tìm thấy ${results.length} ảnh có người này trong "${currentFolderName}".`
+                : `Không tìm thấy ảnh nào có khuôn mặt này trong folder.`,
+            results.length ? 'success' : 'error'
+        );
+    }
 
     document.getElementById('scopeSearchBtn').addEventListener('click', () => {
         isScopedSearch = !isScopedSearch;
