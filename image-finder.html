@@ -1104,6 +1104,29 @@
             </button>
         </form>
 
+        <!-- Paste Drive link -->
+        <div class="ai-search-divider">
+            <span class="ai-search-or-line"></span>
+            <span class="ai-search-or-text">hoặc dán link Drive</span>
+            <span class="ai-search-or-line"></span>
+        </div>
+        <form id="linkPasteForm" class="search-form">
+            <input
+                type="text"
+                id="linkPasteInput"
+                placeholder="Dán link Google Drive chia sẻ công khai vào đây..."
+                class="w-full bg-surface-container-low border-none rounded-full px-6 py-3.5 focus:ring-2 focus:ring-primary/20 transition-all text-sm"
+                autocomplete="off"
+            />
+            <button
+                type="submit"
+                class="shrink-0 bg-surface-container text-on-surface-variant px-5 py-3.5 rounded-full hover:bg-surface-container-high transition flex items-center gap-2 font-semibold text-sm border border-outline-variant"
+            >
+                <span class="material-symbols-outlined">open_in_new</span>
+                <span class="hidden sm:inline">Xem</span>
+            </button>
+        </form>
+
         <div id="statusBanner" class="status-banner hidden"></div>
     </div>
 
@@ -2722,6 +2745,64 @@
         setBackBtn(true, 'Tất cả thư mục');
         updateStatus(result.summary, result.images.length ? 'success' : 'error');
         document.getElementById('quickInput').value = '';
+    });
+
+    // ── Paste Drive link ─────────────────────────────────────────────────
+    function extractDriveFileId(url) {
+        const patterns = [
+            /\/file\/d\/([a-zA-Z0-9_-]{10,})/,
+            /[?&]id=([a-zA-Z0-9_-]{10,})/,
+            /\/d\/([a-zA-Z0-9_-]{10,})\//,
+            /^([a-zA-Z0-9_-]{25,})$/   // raw ID
+        ];
+        const str = url.trim();
+        for (const p of patterns) {
+            const m = str.match(p);
+            if (m) return m[1];
+        }
+        return null;
+    }
+
+    document.getElementById('linkPasteForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const raw = document.getElementById('linkPasteInput').value.trim();
+        if (!raw) return;
+
+        const fileId = extractDriveFileId(raw);
+        if (!fileId) {
+            updateStatus('Link không hợp lệ. Hãy dán link Google Drive dạng drive.google.com/file/d/...', 'error');
+            return;
+        }
+
+        // Build a synthetic image object for the modal
+        const thumbUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
+        const viewUrl = `https://drive.google.com/file/d/${fileId}/view`;
+
+        // Try to get filename from Drive API if user is logged in
+        let fileName = `Drive file (${fileId.slice(0, 8)}...)`;
+        if (currentAccessToken) {
+            try {
+                const res = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,createdTime,thumbnailLink`,
+                    { headers: { Authorization: `Bearer ${currentAccessToken}` } }
+                );
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.name) fileName = data.name;
+                    if (data.thumbnailLink) {
+                        openImageModal({ id: fileId, name: fileName, thumbnailLink: data.thumbnailLink, createdTime: data.createdTime, webContentLink: viewUrl });
+                        document.getElementById('linkPasteInput').value = '';
+                        updateStatus('', '');
+                        return;
+                    }
+                }
+            } catch (_) {}
+        }
+
+        // Fallback: open with public thumbnail (works for publicly shared files)
+        openImageModal({ id: fileId, name: fileName, thumbnailLink: thumbUrl, webContentLink: viewUrl });
+        document.getElementById('linkPasteInput').value = '';
+        updateStatus('', '');
     });
 
     document.getElementById('chatForm').addEventListener('submit', async (e) => {
