@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-    <meta name="app-version" content="2.3.1-usage-guide"/>
+    <meta name="app-version" content="2.3.2-face-folder"/>
     <title>Klooker Media Image Finder</title>
     <meta name="application-name" content="Klooker Media Image Finder"/>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -704,6 +704,30 @@
         .face-run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .face-run-btn:not(:disabled):hover { opacity: 0.9; }
 
+        .face-modal { max-width: 460px; }
+        .face-modal-lead { font-size: 13px; color: #434655; line-height: 1.5; margin: -8px 0 16px; }
+        .face-source-row { display: flex; gap: 8px; margin-bottom: 12px; }
+        .face-source-btn {
+            flex: 1; border: 1.5px solid #e1e2ea; background: #f8f9fb;
+            border-radius: 10px; padding: 8px 10px; font-size: 12px; font-weight: 700;
+            color: #3d3f52; cursor: pointer;
+        }
+        .face-source-btn.active { border-color: #7c3aed; background: #faf5ff; color: #7c3aed; }
+        .face-link-row { display: flex; gap: 8px; }
+        .face-link-row input {
+            flex: 1; border: 1.5px solid #e1e2ea; border-radius: 10px;
+            padding: 10px 12px; font-size: 13px; outline: none;
+        }
+        .face-link-row input:focus { border-color: #7c3aed; }
+        .face-link-row button {
+            border: none; background: #7c3aed; color: #fff; border-radius: 10px;
+            padding: 10px 14px; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
+        }
+        .face-change-btn {
+            margin-top: 8px; border: none; background: none; color: #7c3aed;
+            font-size: 12px; font-weight: 600; cursor: pointer;
+        }
+
         .section-divider {
             grid-column: 1 / -1;
             display: flex;
@@ -1198,7 +1222,7 @@
                     <span class="num">4</span>
                     <span class="material-symbols-outlined">search</span>
                     <h3>Tìm ảnh</h3>
-                    <p>Tên file = Tìm nhanh. “Váy trắng sân khấu” = AI Tìm. Ảnh chân dung = Tìm theo mặt.</p>
+                    <p>Tên file = Tìm nhanh. Mô tả cảnh = AI Tìm. Mở folder → Tìm mặt: up ảnh hoặc dán link Drive công khai.</p>
                 </div>
                 <div class="flow-step">
                     <span class="num">5</span>
@@ -1244,6 +1268,7 @@
             <ul class="tip-list">
                 <li><span class="material-symbols-outlined">warning</span><span>Chọn folder trên Picker mà Google không nạp ảnh: cửa sổ mở lại đúng folder đó — chọn file ảnh (Ctrl/Cmd + A), không chỉ chọn folder.</span></li>
                 <li><span class="material-symbols-outlined">lock</span><span>App chỉ đọc file bạn chọn (<code>drive.file</code>), không xem cả Drive cá nhân.</span></li>
+                <li><span class="material-symbols-outlined">face_retouching_natural</span><span>Tìm mặt: mở folder → nút tím → upload ảnh bạn hoặc link Drive công khai. App so với mọi mặt trong từng ảnh, kể cả ảnh nhóm đông người.</span></li>
                 <li><span class="material-symbols-outlined">event</span><span>Trong folder: sắp xếp Mới nhất / Cũ nhất / Tên. Bật “Tìm trong folder” để AI không lẫn shoot khác.</span></li>
                 <li><span class="material-symbols-outlined">link</span><span>Có link Drive công khai: dán vào ô “hoặc dán link Drive” để xem nhanh, không cần thêm vào thư viện.</span></li>
             </ul>
@@ -1391,7 +1416,7 @@
                     <!-- Face search — only shown inside a folder -->
                     <button type="button" id="faceSearchBtn" class="face-search-btn hidden">
                         <span class="material-symbols-outlined" style="font-size:15px;">face_retouching_natural</span>
-                        <span>Tìm theo mặt</span>
+                        <span>Tìm mặt trong folder</span>
                     </button>
                     <!-- Search scope toggle — only shown inside a folder -->
                     <button type="button" id="scopeSearchBtn" class="scope-btn hidden">
@@ -1419,22 +1444,37 @@
     <div class="face-modal">
         <div class="face-modal-header">
             <span class="material-symbols-outlined" style="color:#7c3aed">face_retouching_natural</span>
-            <h3>Tìm theo khuôn mặt</h3>
+            <h3>Tìm mặt trong folder</h3>
             <button onclick="closeFaceModal()" class="face-modal-close">
                 <span class="material-symbols-outlined">close</span>
             </button>
         </div>
+        <p class="face-modal-lead" id="faceModalLead">Mở folder rồi up ảnh bạn (hoặc dán link Drive công khai). App so nét mặt với mọi người trong từng ảnh — kể cả ảnh nhóm ~50 người.</p>
 
-        <div id="faceUploadArea" class="face-upload-area" onclick="document.getElementById('faceFileInput').click()">
-            <span class="material-symbols-outlined" style="font-size:40px;color:#9ca3af">add_photo_alternate</span>
-            <p>Click để chọn ảnh chứa khuôn mặt cần tìm</p>
-            <p style="font-size:11px;color:#9ca3af">JPG, PNG — ảnh chân dung rõ mặt cho kết quả tốt nhất</p>
-            <input type="file" id="faceFileInput" accept="image/*" style="display:none">
+        <div id="faceInputPane">
+            <div class="face-source-row">
+                <button type="button" class="face-source-btn active" id="faceTabFile" onclick="setFaceSourceTab('file')">Upload file</button>
+                <button type="button" class="face-source-btn" id="faceTabLink" onclick="setFaceSourceTab('link')">Link Drive công khai</button>
+            </div>
+            <div id="faceUploadArea" class="face-upload-area" onclick="document.getElementById('faceFileInput').click()">
+                <span class="material-symbols-outlined" style="font-size:40px;color:#9ca3af">add_photo_alternate</span>
+                <p>Chọn ảnh chân dung của người cần tìm</p>
+                <p style="font-size:11px;color:#9ca3af">JPG, PNG — mặt rõ, nhìn thẳng cho kết quả tốt nhất</p>
+                <input type="file" id="faceFileInput" accept="image/*" style="display:none">
+            </div>
+            <div id="faceLinkArea" class="hidden">
+                <div class="face-link-row">
+                    <input type="url" id="faceDriveLinkInput" placeholder="https://drive.google.com/file/d/..." autocomplete="off"/>
+                    <button type="button" id="faceDriveLinkBtn">Dùng link</button>
+                </div>
+                <p style="font-size:11px;color:#9ca3af;margin-top:8px;">File Drive phải để “Anyone with the link” (công khai).</p>
+            </div>
         </div>
 
         <div id="facePreviewArea" class="face-preview-area hidden">
             <img id="facePreviewImg" src="" alt="preview" style="max-height:160px;border-radius:12px;object-fit:contain;">
             <div id="faceDetectStatus" style="font-size:12px;color:#737686;margin-top:6px;"></div>
+            <button type="button" class="face-change-btn" onclick="resetFaceQuery()">Đổi ảnh mẫu</button>
         </div>
 
         <div id="faceProgress" class="face-progress hidden">
@@ -1457,7 +1497,7 @@
     const GOOGLE_API_KEY = 'AIzaSyDnjdN92IRnso3eWRXn_uiu2_qyi97cKeA';
     const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
     const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email openid profile';
-    const APP_VERSION = '2.3.1-usage-guide';
+    const APP_VERSION = '2.3.2-face-folder';
     const PICKER_IMAGE_MIMES = 'image/png,image/jpeg,image/jpg,image/gif,image/webp,image/bmp,image/tiff,image/heic,image/heif';
     const AI_PROXY_URL = 'https://gemini-proxy-two-mu.vercel.app/api/gemini';
     const STOP_WORDS = new Set(['tim', 'anh', 'image', 'photo', 'theo', 'trong', 'giup', 'cho', 'tooi', 'can']);
@@ -3102,10 +3142,13 @@
 
     // ── Face Search ──────────────────────────────────────────────────────
     const FACE_MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/';
-    const FACE_MATCH_THRESHOLD = 0.55; // euclidean distance, lower = stricter
+    const FACE_MATCH_THRESHOLD = 0.52;
+    const FACE_SCAN_MAX_EDGE = 1400;
+    const FACE_SCAN_CONCURRENCY = 2;
     let faceModelsLoaded = false;
     let faceModelsLoading = false;
     let queryFaceDescriptor = null;
+    const folderFaceCache = new Map();
 
     async function ensureFaceModels() {
         if (faceModelsLoaded) return true;
@@ -3117,6 +3160,7 @@
         try {
             await Promise.all([
                 faceapi.nets.ssdMobilenetv1.loadFromUri(FACE_MODEL_URL),
+                faceapi.nets.tinyFaceDetector.loadFromUri(FACE_MODEL_URL),
                 faceapi.nets.faceLandmark68Net.loadFromUri(FACE_MODEL_URL),
                 faceapi.nets.faceRecognitionNet.loadFromUri(FACE_MODEL_URL)
             ]);
@@ -3127,33 +3171,151 @@
         return faceModelsLoaded;
     }
 
-    async function getDescriptorFromElement(el) {
-        const det = await faceapi.detectSingleFace(el, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 }))
-            .withFaceLandmarks().withFaceDescriptor();
-        return det?.descriptor || null;
+    function resizeCanvasForFace(source) {
+        const w = source.width || source.naturalWidth || 0;
+        const h = source.height || source.naturalHeight || 0;
+        if (!w || !h) return null;
+        const scale = Math.min(1, FACE_SCAN_MAX_EDGE / Math.max(w, h));
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(w * scale));
+        c.height = Math.max(1, Math.round(h * scale));
+        c.getContext('2d').drawImage(source, 0, 0, c.width, c.height);
+        return c;
     }
 
     async function loadImageCanvas(url) {
         try {
             const res = await fetch(url);
+            if (!res.ok) return null;
             const blob = await res.blob();
+            if (!blob.type.startsWith('image/') && blob.size < 80) return null;
             const bmp = await createImageBitmap(blob);
-            const c = document.createElement('canvas');
-            c.width = bmp.width; c.height = bmp.height;
-            c.getContext('2d').drawImage(bmp, 0, 0);
-            return c;
-        } catch { return null; }
+            return resizeCanvasForFace(bmp);
+        } catch (_) {
+            return loadImageCanvasViaImg(url);
+        }
     }
 
-    function openFaceModal() {
+    function loadImageCanvasViaImg(url) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => resolve(resizeCanvasForFace(img));
+            img.onerror = () => resolve(null);
+            img.src = url;
+        });
+    }
+
+    function faceSourceUrls(image) {
+        const id = image.id;
+        const thumb = image.thumbnailLink
+            ? image.thumbnailLink.replace(/=s\d+$/, '=s1200').replace(/=w\d+-h\d+/, '=s1200')
+            : null;
+        return [
+            thumb && currentAccessToken
+                ? `${thumb}${thumb.includes('?') ? '&' : '?'}access_token=${encodeURIComponent(currentAccessToken)}`
+                : thumb,
+            `https://drive.google.com/thumbnail?id=${id}&sz=w1200`,
+            `https://lh3.googleusercontent.com/d/${id}=s1200`,
+            currentAccessToken
+                ? `https://www.googleapis.com/drive/v3/files/${id}?alt=media&access_token=${encodeURIComponent(currentAccessToken)}`
+                : null,
+        ].filter(Boolean);
+    }
+
+    async function loadCanvasFromUrls(urls) {
+        for (const url of urls) {
+            const canvas = await loadImageCanvas(url);
+            if (canvas && canvas.width > 40) return canvas;
+        }
+        return null;
+    }
+
+    async function detectQueryDescriptor(el) {
+        const opts = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.35 });
+        const all = await faceapi.detectAllFaces(el, opts).withFaceLandmarks().withFaceDescriptors();
+        if (!all.length) return { descriptor: null, count: 0 };
+        all.sort((a, b) => (b.detection.box.area || 0) - (a.detection.box.area || 0));
+        return { descriptor: all[0].descriptor, count: all.length };
+    }
+
+    async function detectAllDescriptors(canvas) {
+        const tiny = new faceapi.TinyFaceDetectorOptions({ inputSize: 512, scoreThreshold: 0.15 });
+        let dets = await faceapi.detectAllFaces(canvas, tiny).withFaceLandmarks().withFaceDescriptors();
+        if (!dets.length) {
+            const ssd = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.2 });
+            dets = await faceapi.detectAllFaces(canvas, ssd).withFaceLandmarks().withFaceDescriptors();
+        }
+        return dets.map((d) => d.descriptor);
+    }
+
+    function setFaceSourceTab(tab) {
+        const fileBtn = document.getElementById('faceTabFile');
+        const linkBtn = document.getElementById('faceTabLink');
+        const upload = document.getElementById('faceUploadArea');
+        const link = document.getElementById('faceLinkArea');
+        const isFile = tab !== 'link';
+        fileBtn.classList.toggle('active', isFile);
+        linkBtn.classList.toggle('active', !isFile);
+        upload.classList.toggle('hidden', !isFile);
+        link.classList.toggle('hidden', isFile);
+    }
+
+    function resetFaceQuery() {
         queryFaceDescriptor = null;
         document.getElementById('faceFileInput').value = '';
-        document.getElementById('faceUploadArea').classList.remove('hidden');
+        document.getElementById('faceDriveLinkInput').value = '';
+        document.getElementById('facePreviewImg').src = '';
+        document.getElementById('faceInputPane').classList.remove('hidden');
         document.getElementById('facePreviewArea').classList.add('hidden');
         document.getElementById('faceProgress').classList.add('hidden');
         document.getElementById('faceSearchRunBtn').disabled = true;
         document.getElementById('faceDetectStatus').textContent = '';
+        setFaceSourceTab('file');
+    }
+
+    async function prepareQueryFaceFromSrc(src) {
+        const previewImg = document.getElementById('facePreviewImg');
+        document.getElementById('faceInputPane').classList.add('hidden');
+        document.getElementById('facePreviewArea').classList.remove('hidden');
+        document.getElementById('faceDetectStatus').textContent = 'Đang tải AI nhận diện mặt (lần đầu ~10s)...';
+        document.getElementById('faceSearchRunBtn').disabled = true;
+        previewImg.src = src;
+
+        const ok = await ensureFaceModels();
+        if (!ok) {
+            document.getElementById('faceDetectStatus').textContent = 'Không tải được model. Thử lại.';
+            return;
+        }
+
+        const runDetect = async () => {
+            document.getElementById('faceDetectStatus').textContent = 'Đang đọc nét mặt trong ảnh mẫu...';
+            const { descriptor, count } = await detectQueryDescriptor(previewImg);
+            if (!descriptor) {
+                document.getElementById('faceDetectStatus').textContent = 'Không thấy mặt. Dùng ảnh chân dung rõ hơn, hoặc link Drive để công khai.';
+                return;
+            }
+            queryFaceDescriptor = descriptor;
+            document.getElementById('faceDetectStatus').textContent = count > 1
+                ? `Thấy ${count} mặt — dùng mặt lớn nhất. Bấm Bắt đầu tìm trong folder.`
+                : 'Đã lấy nét mặt. Bấm Bắt đầu tìm trong folder.';
+            document.getElementById('faceSearchRunBtn').disabled = false;
+        };
+
+        if (previewImg.complete && previewImg.naturalWidth) await runDetect();
+        else previewImg.onload = runDetect;
+    }
+
+    function openFaceModal() {
+        const n = currentFolderImages.length;
+        document.getElementById('faceModalLead').textContent = currentFolderName
+            ? `Folder “${currentFolderName}” · ${n} ảnh. Up ảnh bạn hoặc dán link Drive công khai — app tìm mọi ảnh có cùng nét mặt, kể cả ảnh nhóm.`
+            : 'Mở một folder trước, rồi up ảnh hoặc dán link Drive công khai.';
+        resetFaceQuery();
         document.getElementById('faceModal').classList.remove('hidden');
+        if (!n) {
+            document.getElementById('faceDetectStatus').textContent = 'Folder này chưa có ảnh.';
+        }
     }
 
     function closeFaceModal() {
@@ -3165,78 +3327,93 @@
     document.getElementById('faceFileInput').addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (!file) return;
+        await prepareQueryFaceFromSrc(URL.createObjectURL(file));
+    });
 
-        const url = URL.createObjectURL(file);
-        const previewImg = document.getElementById('facePreviewImg');
-        previewImg.src = url;
-        document.getElementById('faceUploadArea').classList.add('hidden');
-        document.getElementById('facePreviewArea').classList.remove('hidden');
-        document.getElementById('faceDetectStatus').textContent = 'Đang tải AI model lần đầu (~10s)...';
-        document.getElementById('faceSearchRunBtn').disabled = true;
-
-        const ok = await ensureFaceModels();
-        if (!ok) {
-            document.getElementById('faceDetectStatus').textContent = '❌ Không tải được model. Thử lại.';
+    document.getElementById('faceDriveLinkBtn').addEventListener('click', async () => {
+        const raw = document.getElementById('faceDriveLinkInput').value.trim();
+        const fileId = extractDriveFileId(raw);
+        if (!fileId) {
+            document.getElementById('faceDetectStatus').textContent = 'Link Drive không hợp lệ.';
+            document.getElementById('facePreviewArea').classList.remove('hidden');
             return;
         }
-
-        previewImg.onload = async () => {
-            document.getElementById('faceDetectStatus').textContent = 'Đang nhận diện khuôn mặt...';
-            const descriptor = await getDescriptorFromElement(previewImg);
-            if (!descriptor) {
-                document.getElementById('faceDetectStatus').textContent = '⚠️ Không tìm thấy khuôn mặt trong ảnh. Thử ảnh khác.';
-                return;
-            }
-            queryFaceDescriptor = descriptor;
-            document.getElementById('faceDetectStatus').textContent = '✅ Nhận diện thành công. Bấm "Bắt đầu tìm".';
-            document.getElementById('faceSearchRunBtn').disabled = false;
-        };
-        if (previewImg.complete) previewImg.onload();
+        const urls = [
+            `https://lh3.googleusercontent.com/d/${fileId}=s800`,
+            `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`,
+            currentAccessToken
+                ? `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&access_token=${encodeURIComponent(currentAccessToken)}`
+                : null,
+        ].filter(Boolean);
+        document.getElementById('faceDetectStatus').textContent = 'Đang tải ảnh từ link Drive...';
+        const canvas = await loadCanvasFromUrls(urls);
+        if (!canvas) {
+            document.getElementById('faceInputPane').classList.remove('hidden');
+            document.getElementById('facePreviewArea').classList.remove('hidden');
+            document.getElementById('faceDetectStatus').textContent = 'Không tải được ảnh. Kiểm tra file đã chia sẻ công khai.';
+            return;
+        }
+        await prepareQueryFaceFromSrc(canvas.toDataURL('image/jpeg', 0.92));
     });
+
+    async function descriptorsForFolderImage(image) {
+        if (folderFaceCache.has(image.id)) return folderFaceCache.get(image.id);
+        const canvas = await loadCanvasFromUrls(faceSourceUrls(image));
+        if (!canvas) {
+            folderFaceCache.set(image.id, []);
+            return [];
+        }
+        const descriptors = await detectAllDescriptors(canvas);
+        folderFaceCache.set(image.id, descriptors);
+        return descriptors;
+    }
 
     async function runFaceSearch() {
         if (!queryFaceDescriptor || !currentFolderImages.length) return;
-        const pool = currentFolderImages;
+        const pool = currentFolderImages.slice();
 
         document.getElementById('faceSearchRunBtn').disabled = true;
         document.getElementById('faceProgress').classList.remove('hidden');
         const fill = document.getElementById('faceProgressFill');
         const txt = document.getElementById('faceProgressText');
-
         const matches = [];
-        for (let i = 0; i < pool.length; i++) {
-            const image = pool[i];
-            txt.textContent = `Đang kiểm tra ảnh ${i + 1}/${pool.length}...`;
-            fill.style.width = `${Math.round(((i + 1) / pool.length) * 100)}%`;
+        let done = 0;
 
-            const url = getThumbnailUrl(image, 300);
-            const canvas = await loadImageCanvas(url);
-            if (!canvas) continue;
-
-            const detections = await faceapi.detectAllFaces(canvas, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 }))
-                .withFaceLandmarks().withFaceDescriptors();
-
-            for (const det of detections) {
-                const dist = faceapi.euclideanDistance(queryFaceDescriptor, det.descriptor);
-                if (dist < FACE_MATCH_THRESHOLD) {
-                    matches.push({ image, dist });
-                    break;
-                }
+        const worker = async (image) => {
+            const descriptors = await descriptorsForFolderImage(image);
+            let best = Infinity;
+            for (const desc of descriptors) {
+                const dist = faceapi.euclideanDistance(queryFaceDescriptor, desc);
+                if (dist < best) best = dist;
             }
-        }
+            if (best < FACE_MATCH_THRESHOLD) matches.push({ image, dist: best, faces: descriptors.length });
+            done += 1;
+            txt.textContent = `Đang so ${done}/${pool.length} ảnh · đã thấy ${matches.length} trùng`;
+            fill.style.width = `${Math.round((done / pool.length) * 100)}%`;
+        };
+
+        let cursor = 0;
+        const runners = Array.from({ length: Math.min(FACE_SCAN_CONCURRENCY, pool.length) }, async () => {
+            while (cursor < pool.length) {
+                const image = pool[cursor];
+                cursor += 1;
+                await worker(image);
+            }
+        });
+        await Promise.all(runners);
 
         closeFaceModal();
         matches.sort((a, b) => a.dist - b.dist);
         const results = matches.map((m) => m.image);
 
         isSearchMode = true;
-        document.getElementById('galleryTitle').textContent = `Kết quả: tìm theo khuôn mặt`;
-        renderGallery(results, `${results.length} ảnh · Face Search`);
+        document.getElementById('galleryTitle').textContent = 'Kết quả: tìm theo khuôn mặt';
+        renderGallery(results, `${results.length} ảnh · Face Search trong “${currentFolderName}”`);
         setBackBtn(true, currentFolderName || 'Tất cả thư mục');
         updateStatus(
             results.length
-                ? `Tìm thấy ${results.length} ảnh có người này trong "${currentFolderName}".`
-                : `Không tìm thấy ảnh nào có khuôn mặt này trong folder.`,
+                ? `Tìm thấy ${results.length}/${pool.length} ảnh có người này trong “${currentFolderName}”.`
+                : `Không thấy mặt này trong ${pool.length} ảnh của folder. Thử ảnh mẫu rõ hơn.`,
             results.length ? 'success' : 'error'
         );
     }
