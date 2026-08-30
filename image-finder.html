@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-    <meta name="app-version" content="2.3.3-search-hyphen"/>
+    <meta name="app-version" content="2.3.4-scope-file-only"/>
     <title>Klooker Media Image Finder</title>
     <meta name="application-name" content="Klooker Media Image Finder"/>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -1497,7 +1497,7 @@
     const GOOGLE_API_KEY = 'AIzaSyDnjdN92IRnso3eWRXn_uiu2_qyi97cKeA';
     const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
     const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email openid profile';
-    const APP_VERSION = '2.3.3-search-hyphen';
+    const APP_VERSION = '2.3.4-scope-file-only';
     const PICKER_IMAGE_MIMES = 'image/png,image/jpeg,image/jpg,image/gif,image/webp,image/bmp,image/tiff,image/heic,image/heif';
     const AI_PROXY_URL = 'https://gemini-proxy-two-mu.vercel.app/api/gemini';
     const STOP_WORDS = new Set(['tim', 'anh', 'image', 'photo', 'theo', 'trong', 'giup', 'cho', 'tooi', 'can']);
@@ -2975,6 +2975,7 @@
         return google.accounts.oauth2.initTokenClient({
             client_id: GOOGLE_CLIENT_ID,
             scope: SCOPES,
+            include_granted_scopes: false,
             ux_mode: uxMode,
             redirect_uri: window.location.origin + window.location.pathname,
             callback: handleTokenResponse,
