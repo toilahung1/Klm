@@ -15,25 +15,25 @@
     <header class="bg-white border-b border-[#e1e2e4]">
         <div class="max-w-3xl mx-auto px-6 py-5 flex items-center justify-between">
             <a href="index.html" class="text-lg font-bold text-[#004ac6]">KLOOKER MEDIA</a>
-            <a href="image-finder.html" class="text-sm text-[#495c95] hover:text-[#004ac6]">Image Finder</a>
+            <a href="image-finder.html" class="text-sm text-[#495c95] hover:text-[#004ac6]">Klooker Media Image Finder</a>
         </div>
     </header>
 
     <main class="max-w-3xl mx-auto px-6 py-12">
         <h1 class="text-3xl font-extrabold mb-2">Chính Sách Bảo Mật</h1>
-        <p class="text-sm text-[#434655] mb-10">Cập nhật lần cuối: 15/06/2026 · Áp dụng cho ứng dụng <strong>AI Image Finder</strong> tại <a class="text-[#004ac6]" href="https://klookermediavn.com">klookermediavn.com</a></p>
+        <p class="text-sm text-[#434655] mb-10">Cập nhật lần cuối: 31/08/2026 · Áp dụng cho ứng dụng <strong>Klooker Media Image Finder</strong> tại <a class="text-[#004ac6]" href="https://klookermediavn.com">klookermediavn.com</a></p>
 
         <div class="space-y-8 text-[#434655] leading-relaxed">
             <section>
                 <h2 class="text-xl font-bold text-[#191c1e] mb-3">1. Giới thiệu</h2>
-                <p>Klooker Media Vietnam ("chúng tôi") vận hành website <a class="text-[#004ac6]" href="https://klookermediavn.com">klookermediavn.com</a> và tính năng <strong>AI Image Finder</strong>. Chính sách này mô tả cách chúng tôi thu thập, sử dụng, lưu trữ và bảo vệ thông tin khi bạn sử dụng dịch vụ, bao gồm khi bạn đăng nhập bằng tài khoản Google.</p>
+                <p>Klooker Media Vietnam ("chúng tôi") vận hành website <a class="text-[#004ac6]" href="https://klookermediavn.com">klookermediavn.com</a> và tính năng <strong>Klooker Media Image Finder</strong>. Chính sách này mô tả cách chúng tôi thu thập, sử dụng, lưu trữ và bảo vệ thông tin khi bạn sử dụng dịch vụ, bao gồm khi bạn đăng nhập bằng tài khoản Google.</p>
             </section>
 
             <section>
                 <h2 class="text-xl font-bold text-[#191c1e] mb-3">2. Dữ liệu chúng tôi thu thập</h2>
                 <ul class="list-disc pl-6 space-y-2">
                     <li><strong>Thông tin tài khoản Google:</strong> địa chỉ email, tên hiển thị (khi bạn đồng ý đăng nhập).</li>
-                    <li><strong>Dữ liệu Google Drive:</strong> danh sách ảnh (tên file, ID, thumbnail, thời gian tạo) với quyền <em>chỉ đọc</em> (<code>drive.readonly</code>). Chúng tôi không upload, sửa hoặc xóa file trên Drive của bạn.</li>
+                    <li><strong>Dữ liệu Google Drive:</strong> chỉ các ảnh/folder bạn chủ động chọn qua Google Picker (tên file, ID, thumbnail, thời gian tạo), với quyền <code>drive.file</code>. Ứng dụng không quét toàn bộ Drive. Chúng tôi không upload, sửa hoặc xóa file trừ khi bạn dùng tính năng chia sẻ trên ảnh đã chọn.</li>
                     <li><strong>Nội dung tìm kiếm:</strong> câu mô tả/ từ khóa bạn nhập để tìm ảnh.</li>
                     <li><strong>Thông tin liên hệ:</strong> họ tên, email, số điện thoại (nếu bạn gửi qua form tư vấn trên website).</li>
                     <li><strong>Gemini API Key (tùy chọn):</strong> nếu bạn nhập key trên trình duyệt, key được lưu cục bộ trong <code>localStorage</code> của thiết bị bạn, không gửi về máy chủ Klooker Media.</li>
@@ -43,8 +43,8 @@
             <section>
                 <h2 class="text-xl font-bold text-[#191c1e] mb-3">3. Cách chúng tôi sử dụng dữ liệu</h2>
                 <ul class="list-disc pl-6 space-y-2">
-                    <li>Hiển thị ảnh từ Google Drive của bạn trong giao diện Image Finder.</li>
-                    <li>Tìm kiếm ảnh theo mô tả bạn cung cấp (kết hợp tìm kiếm Drive và AI Gemini khi bạn bật tính năng AI).</li>
+                    <li>Hiển thị và lập chỉ mục các ảnh bạn đã chọn từ Google Drive.</li>
+                    <li>Tìm kiếm trong thư viện đã chọn theo mô tả bạn cung cấp (kết hợp Drive API và AI).</li>
                     <li>Xác thực danh tính khi đăng nhập bằng Google OAuth.</li>
                     <li>Liên hệ tư vấn dịch vụ truyền thông khi bạn gửi form trên website.</li>
                 </ul>
@@ -64,7 +64,7 @@
             <section>
                 <h2 class="text-xl font-bold text-[#191c1e] mb-3">5. Bên thứ ba &amp; dịch vụ liên quan</h2>
                 <ul class="list-disc pl-6 space-y-2">
-                    <li><strong>Google OAuth / Google Drive API:</strong> đăng nhập và đọc ảnh Drive.</li>
+                    <li><strong>Google OAuth / Google Drive API / Google Picker:</strong> đăng nhập và truy cập đúng file bạn chọn.</li>
                     <li><strong>Google Gemini API:</strong> hỗ trợ tìm kiếm ảnh thông minh (khi người dùng cung cấp API key).</li>
                     <li><strong>GitHub Pages:</strong> lưu trữ website tĩnh.</li>
                 </ul>

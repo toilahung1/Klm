@@ -3,8 +3,9 @@
 <head>
     <meta charset="utf-8"/>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-    <meta name="app-version" content="2.2-gpt-instant"/>
-    <title>Klooker Media Image Finder - AI Index Search</title>
+    <meta name="app-version" content="2.3-drive-file-picker"/>
+    <title>Klooker Media Image Finder</title>
+    <meta name="application-name" content="Klooker Media Image Finder"/>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -591,6 +592,31 @@
         }
         .face-search-btn:hover { background: #ede9fe; }
 
+        .pick-drive-btn {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            border: 1.5px solid #004ac6;
+            background: #eef2ff;
+            color: #004ac6;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .pick-drive-btn:hover { background: #dbe4ff; }
+        .pick-drive-btn-lg {
+            margin: 16px auto 0;
+            padding: 10px 20px;
+            font-size: 14px;
+            border-radius: 999px;
+        }
+        .picker-empty-icon { font-size: 48px; color: #004ac6; }
+        .picker-empty-title { font-weight: 700; color: #191c1e; margin: 12px 0 6px; font-size: 16px; }
+        .picker-empty-text { max-width: 420px; margin: 0 auto; line-height: 1.5; }
+
         /* Face modal */
         .face-modal-overlay {
             position: fixed;
@@ -1006,7 +1032,7 @@
     <div class="modal-content max-w-md">
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold mb-2">Klooker Media Image Finder</h1>
-            <p class="text-on-surface-variant mb-4">AI học toàn bộ Drive — tìm mọi ảnh, kể cả cũ nhất</p>
+            <p class="text-on-surface-variant mb-4">Chọn folder shoot trên Drive — AI tìm trong đúng tập đó</p>
         </div>
         
         <div class="space-y-4">
@@ -1016,7 +1042,7 @@
                 Đang tải cấu hình...
             </p>
             <p class="text-center text-xs text-on-surface-variant">
-                Đăng nhập Gmail → AI học toàn bộ ảnh Drive → mô tả để tìm mọi ảnh kể cả cũ nhất
+                Đăng nhập Gmail → chọn folder/ảnh từ Drive → AI học tập đó để tìm theo mô tả, mặt, ngày
             </p>
             <p class="text-center text-xs text-on-surface-variant mt-2">
                 <a href="privacy.html" class="text-primary hover:underline">Chính sách bảo mật</a>
@@ -1084,7 +1110,7 @@
         </div>
         <div class="search-label ai-label">
             <span class="material-symbols-outlined search-label-icon">psychology</span>
-            <span>Mô tả nội dung ảnh — AI hiểu ngữ nghĩa, tìm trong toàn bộ thư viện</span>
+            <span>Mô tả nội dung ảnh — AI tìm trong thư viện bạn đã chọn từ Drive</span>
         </div>
         <form id="chatForm" class="search-form">
             <input
@@ -1140,11 +1166,15 @@
                         <span id="backBtnLabel">Tất cả thư mục</span>
                     </button>
                     <div style="min-width:0;">
-                        <h3 class="font-bold text-sm" id="galleryTitle">Thư viện Google Drive</h3>
-                        <p class="text-xs text-on-surface-variant" id="galleryStatus">Chưa tải ảnh</p>
+                        <h3 class="font-bold text-sm" id="galleryTitle">Thư viện đã chọn</h3>
+                        <p class="text-xs text-on-surface-variant" id="galleryStatus">Chưa chọn ảnh</p>
                     </div>
                 </div>
                 <div class="toolbar-right">
+                    <button type="button" id="pickDriveBtn" class="pick-drive-btn">
+                        <span class="material-symbols-outlined" style="font-size:15px;">add_to_photos</span>
+                        <span>Thêm từ Drive</span>
+                    </button>
                     <!-- Face search — only shown inside a folder -->
                     <button type="button" id="faceSearchBtn" class="face-search-btn hidden">
                         <span class="material-symbols-outlined" style="font-size:15px;">face_retouching_natural</span>
@@ -1165,7 +1195,7 @@
                 <button type="button" id="showAllBtn" class="hidden"></button>
             </div>
             <div id="driveGallery" class="gallery-grid">
-                <div class="gallery-empty">Đăng nhập Gmail để xem ảnh trong Drive</div>
+                <div class="gallery-empty">Đăng nhập rồi chọn folder shoot từ Drive</div>
             </div>
         </div>
     </div>
@@ -1210,9 +1240,12 @@
 
 <script>
     const GOOGLE_CLIENT_ID = '42024300272-hqn54cffhmal5tuick7uqcerufpulhlp.apps.googleusercontent.com';
+    const GOOGLE_APP_ID = '42024300272';
+    const GOOGLE_API_KEY = 'AIzaSyDnjdN92IRnso3eWRXn_uiu2_qyi97cKeA';
     const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
-    const SCOPES = 'https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/userinfo.email openid profile';
-    const APP_VERSION = '2.2-gpt-instant';
+    const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email openid profile';
+    const APP_VERSION = '2.3-drive-file-picker';
+    const PICKER_IMAGE_MIMES = 'image/png,image/jpeg,image/jpg,image/gif,image/webp,image/bmp,image/tiff,image/heic,image/heif';
     const AI_PROXY_URL = 'https://gemini-proxy-two-mu.vercel.app/api/gemini';
     const STOP_WORDS = new Set(['tim', 'anh', 'image', 'photo', 'theo', 'trong', 'giup', 'cho', 'tooi', 'can']);
     const INDEX_DB_NAME = 'klooker-image-index-v2'; // v2: added embedding vectors
@@ -1284,7 +1317,9 @@
     }
 
     // ── Drive image cache (localStorage, TTL 30min) ───────────────────────
-    const DRIVE_CACHE_KEY = 'klm_drive_cache_v1';
+    const DRIVE_CACHE_KEY = 'klm_drive_cache_v3_file';
+    const PICKED_IDS_KEY = 'klm_picked_ids_v1';
+    const OAUTH_SCOPE_FLAG = 'klm_oauth_scope';
     const DRIVE_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
     function saveDriveCache(images, folders) {
@@ -1322,7 +1357,7 @@
                 return 'Google Drive API chưa được bật trong Google Cloud Console. Liên hệ quản trị viên.';
             }
             // Likely insufficient scope — app in Testing mode
-            return 'Tài khoản này chưa được cấp quyền Drive. Vui lòng đăng xuất rồi đăng nhập lại và chọn "Cho phép" tất cả quyền trong cửa sổ Google.';
+            return 'App chưa được cấp quyền file bạn chọn. Đăng xuất, đăng nhập lại, rồi chọn ảnh/folder từ cửa sổ Drive.';
         }
         if (status === 401) {
             return 'Phiên đăng nhập hết hạn. Vui lòng đăng xuất và đăng nhập lại.';
@@ -1390,6 +1425,223 @@
             }));
         }
         return result;
+    }
+
+    function isImageFile(file) {
+        const mime = String(file?.mimeType || '');
+        return mime.startsWith('image/') || mime.includes('photo');
+    }
+
+    function libraryIdsKey() {
+        return `${PICKED_IDS_KEY}:${String(currentUser?.email || 'anon').toLowerCase()}`;
+    }
+
+    function loadPickedIds() {
+        try {
+            const raw = localStorage.getItem(libraryIdsKey());
+            const ids = raw ? JSON.parse(raw) : [];
+            return Array.isArray(ids) ? ids.filter(Boolean) : [];
+        } catch (_) { return []; }
+    }
+
+    function savePickedIds(ids) {
+        try { localStorage.setItem(libraryIdsKey(), JSON.stringify([...new Set(ids.filter(Boolean))])); } catch (_) {}
+    }
+
+    function clearPickedIds() {
+        try { localStorage.removeItem(libraryIdsKey()); } catch (_) {}
+    }
+
+    function pickerDocToImage(doc) {
+        const id = doc.id || doc[google.picker.Document.ID];
+        return {
+            id,
+            name: doc.name || doc[google.picker.Document.NAME] || 'Ảnh',
+            mimeType: doc.mimeType || doc[google.picker.Document.MIME_TYPE] || 'image/jpeg',
+            createdTime: null,
+            modifiedTime: null,
+            thumbnailLink: doc.thumbnails?.[0]?.url || null,
+            iconLink: null,
+            webContentLink: doc.url || doc[google.picker.Document.URL] || null,
+            parents: doc.parentId ? [doc.parentId] : [],
+        };
+    }
+
+    async function fetchDriveFileMeta(fileId) {
+        const res = await fetch(
+            `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,createdTime,modifiedTime,webContentLink,thumbnailLink,iconLink,parents&supportsAllDrives=true`,
+            { headers: { Authorization: `Bearer ${currentAccessToken}` } }
+        );
+        if (!res.ok) return null;
+        return res.json();
+    }
+
+    async function listImagesInFolder(accessToken, folderId, recursive = true) {
+        const images = [];
+        const subfolders = [];
+        let pageToken = '';
+
+        do {
+            const params = new URLSearchParams({
+                q: `'${folderId}' in parents and trashed=false`,
+                pageSize: '100',
+                fields: 'nextPageToken,files(id,name,mimeType,createdTime,modifiedTime,webContentLink,thumbnailLink,iconLink,parents)',
+                includeItemsFromAllDrives: 'true',
+                supportsAllDrives: 'true',
+            });
+            if (pageToken) params.set('pageToken', pageToken);
+            const response = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            const data = await response.json();
+            if (!response.ok) break;
+            (data.files || []).forEach((file) => {
+                if (file.mimeType === 'application/vnd.google-apps.folder') subfolders.push(file);
+                else if (isImageFile(file)) images.push(file);
+            });
+            pageToken = data.nextPageToken || '';
+        } while (pageToken);
+
+        if (recursive) {
+            for (const sub of subfolders) {
+                const nested = await listImagesInFolder(accessToken, sub.id, true);
+                images.push(...nested);
+            }
+        }
+        return images;
+    }
+
+    function loadPickerApi() {
+        return new Promise((resolve, reject) => {
+            if (window.google?.picker) { resolve(); return; }
+            if (!window.gapi?.load) { reject(new Error('gapi chưa sẵn sàng')); return; }
+            gapi.load('picker', () => {
+                if (window.google?.picker) resolve();
+                else reject(new Error('Không tải được Google Picker'));
+            });
+        });
+    }
+
+    async function openDrivePicker(options = {}) {
+        const parentId = options.parentId || null;
+        if (!currentAccessToken) {
+            showToast('Hãy đăng nhập lại rồi chọn Drive');
+            return;
+        }
+        try {
+            await loadPickerApi();
+        } catch (error) {
+            updateStatus(error.message || 'Không mở được cửa sổ chọn Drive.', 'error');
+            return;
+        }
+
+        const imageView = new google.picker.DocsView(google.picker.ViewId.DOCS_IMAGES)
+            .setIncludeFolders(true)
+            .setSelectFolderEnabled(true)
+            .setMimeTypes(PICKER_IMAGE_MIMES);
+        if (parentId) imageView.setParent(parentId);
+
+        const builder = new google.picker.PickerBuilder()
+            .setAppId(GOOGLE_APP_ID)
+            .setOAuthToken(currentAccessToken)
+            .setDeveloperKey(GOOGLE_API_KEY)
+            .addView(imageView)
+            .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+            .enableFeature(google.picker.Feature.SUPPORT_DRIVES)
+            .setTitle(parentId ? 'Chọn nhiều ảnh trong folder (Ctrl/Cmd + A)' : 'Chọn folder shoot hoặc nhiều ảnh')
+            .setCallback(handlePickerData);
+
+        if (google.picker.ViewId.FOLDERS) {
+            const folderView = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+                .setIncludeFolders(true)
+                .setSelectFolderEnabled(true);
+            if (parentId) folderView.setParent(parentId);
+            builder.addView(folderView);
+        }
+
+        if (window.location?.origin) builder.setOrigin(window.location.origin);
+        builder.build().setVisible(true);
+    }
+
+    async function handlePickerData(data) {
+        if (!data) return;
+        if (data.action === google.picker.Action.CANCEL) return;
+        if (data.action !== google.picker.Action.PICKED) return;
+
+        const docs = data.docs || [];
+        if (!docs.length) return;
+
+        const folders = docs.filter((d) => (d.mimeType || '') === 'application/vnd.google-apps.folder');
+        const files = docs.filter((d) => (d.mimeType || '') !== 'application/vnd.google-apps.folder');
+        const collected = [];
+
+        updateStatus('Đang thêm ảnh đã chọn vào thư viện...', 'loading');
+
+        for (const file of files) {
+            const meta = await fetchDriveFileMeta(file.id);
+            collected.push(meta && isImageFile(meta) ? meta : pickerDocToImage(file));
+        }
+
+        for (const folder of folders) {
+            folderMap.set(folder.id, { name: folder.name || 'Thư mục', createdTime: null });
+            const kids = await listImagesInFolder(currentAccessToken, folder.id, true);
+            if (kids.length) {
+                collected.push(...kids);
+            } else {
+                showToast('Google chỉ cho đọc ảnh bạn chọn. Vào folder rồi Ctrl/Cmd + A.');
+                updateStatus('Mở folder rồi chọn nhiều ảnh (Ctrl/Cmd + A).', 'loading');
+                window.setTimeout(() => openDrivePicker({ parentId: folder.id }), 300);
+                if (collected.length) await addImagesToLibrary(collected);
+                return;
+            }
+        }
+
+        if (!collected.length) {
+            updateStatus('Chưa nhận được ảnh. Hãy vào folder và chọn file ảnh.', 'error');
+            return;
+        }
+        await addImagesToLibrary(collected);
+    }
+
+    async function addImagesToLibrary(files) {
+        const images = (files || []).filter((f) => f && f.id && isImageFile(f));
+        if (!images.length) {
+            updateStatus('Không có file ảnh trong lựa chọn.', 'error');
+            return;
+        }
+        const byId = new Map(allDriveImages.map((img) => [img.id, img]));
+        images.forEach((img) => byId.set(img.id, img));
+        allDriveImages = [...byId.values()];
+        savePickedIds(allDriveImages.map((img) => img.id));
+
+        const parentIds = [...new Set(allDriveImages.map((img) => img.parents?.[0]).filter(Boolean))];
+        if (parentIds.length) {
+            const names = await fetchFolderNames(currentAccessToken, parentIds);
+            names.forEach((name, id) => folderMap.set(id, name));
+        }
+        saveDriveCache(allDriveImages, folderMap);
+        renderFolderView();
+        updateStatus(`Thư viện: ${allDriveImages.length} ảnh. AI đang học — tìm được ngay.`, 'success');
+        runBackgroundIndexing(allDriveImages);
+    }
+
+    function renderEmptyLibrary() {
+        const gallery = document.getElementById('driveGallery');
+        document.getElementById('galleryTitle').textContent = 'Thư viện đã chọn';
+        document.getElementById('galleryStatus').textContent = 'Chưa chọn ảnh';
+        document.getElementById('sortSelect').classList.add('hidden');
+        document.getElementById('scopeSearchBtn').classList.add('hidden');
+        document.getElementById('faceSearchBtn').classList.add('hidden');
+        setBackBtn(false);
+        gallery.innerHTML = `
+            <div class="gallery-empty picker-empty">
+                <span class="material-symbols-outlined picker-empty-icon">add_photo_alternate</span>
+                <p class="picker-empty-title">Chọn folder shoot từ Drive</p>
+                <p class="picker-empty-text">Vào folder ảnh khách, chọn nhiều file (Ctrl/Cmd + A). AI học đúng tập đó — tìm “váy trắng”, mặt diễn viên, theo ngày.</p>
+                <button type="button" class="pick-drive-btn pick-drive-btn-lg" id="pickDriveBtnEmpty">Chọn từ Google Drive</button>
+            </div>`;
+        const emptyBtn = document.getElementById('pickDriveBtnEmpty');
+        if (emptyBtn) emptyBtn.onclick = () => openDrivePicker();
     }
 
     function getIndexDb() {
@@ -2152,10 +2404,15 @@
         const gallery = document.getElementById('driveGallery');
         const statusEl = document.getElementById('galleryStatus');
         document.getElementById('showAllBtn').classList.add('hidden');
-        document.getElementById('galleryTitle').textContent = 'Thư viện Google Drive';
+        document.getElementById('galleryTitle').textContent = 'Thư viện đã chọn';
         document.getElementById('scopeSearchBtn').classList.add('hidden');
         document.getElementById('faceSearchBtn').classList.add('hidden');
         setBackBtn(false);
+
+        if (!allDriveImages.length) {
+            renderEmptyLibrary();
+            return;
+        }
 
         // Switch sortSelect to folder-list mode
         const sortSel = document.getElementById('sortSelect');
@@ -2381,11 +2638,7 @@
                 });
             });
 
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: GOOGLE_CLIENT_ID,
-                scope: SCOPES,
-                callback: handleTokenResponse,
-            });
+            tokenClient = createTokenClient(preferRedirectLogin() ? 'redirect' : 'popup');
 
             renderGoogleLoginButton();
 
@@ -2405,7 +2658,7 @@
                 }
             }
 
-            statusEl.textContent = 'Đăng nhập bằng Gmail để tìm ảnh trong Google Drive của bạn';
+            statusEl.textContent = 'Đăng nhập Gmail rồi chọn folder shoot từ Drive';
         } catch (error) {
             console.error('Init error:', error);
             statusEl.textContent = 'Không tải được Google Sign-In. Vui lòng tải lại trang.';
@@ -2428,11 +2681,7 @@
             </svg>
             Đăng nhập bằng Gmail
         `;
-        button.onclick = () => {
-            if (!tokenClient) return;
-            document.getElementById('loadingStatus').textContent = 'Đang mở cửa sổ đăng nhập Google...';
-            tokenClient.requestAccessToken({ prompt: 'consent' });
-        };
+        button.onclick = () => startGoogleLogin();
 
         container.appendChild(button);
     }
@@ -2461,11 +2710,75 @@
         } catch (_) { return null; }
     }
 
+    function preferRedirectLogin() {
+        const ua = navigator.userAgent || '';
+        return /FBAN|FBAV|Instagram|Line\/|Zalo|GSA\/|Gmail|MicroMessenger|; wv\)|WebView/i.test(ua);
+    }
+
+    function createTokenClient(uxMode) {
+        return google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID,
+            scope: SCOPES,
+            ux_mode: uxMode,
+            redirect_uri: window.location.origin + window.location.pathname,
+            callback: handleTokenResponse,
+            error_callback: handleGisError,
+        });
+    }
+
+    function handleGisError(err) {
+        const statusEl = document.getElementById('loadingStatus');
+        const type = String(err?.type || err?.message || '');
+        if (type === 'popup_failed_to_open' || type === 'popup_closed') {
+            statusEl.textContent = 'Cửa sổ Google bị chặn. Đang đăng nhập ngay trên trang này...';
+            startGoogleLogin(true);
+            return;
+        }
+        if (type.toLowerCase().includes('access_denied')) {
+            statusEl.textContent = 'Google chưa cho app chạy công khai. Vào Google Cloud → OAuth consent screen → Publish app (In production).';
+            return;
+        }
+        statusEl.textContent = 'Không vào được app bằng Gmail. Mở https://klookermediavn.com/image-finder.html trên Chrome/Safari (đừng mở trong app Mail/Zalo), rồi thử lại.';
+    }
+
+    function startGoogleLogin(forceRedirect) {
+        const statusEl = document.getElementById('loadingStatus');
+        const useRedirect = forceRedirect || preferRedirectLogin();
+        tokenClient = createTokenClient(useRedirect ? 'redirect' : 'popup');
+        statusEl.textContent = useRedirect
+            ? 'Đang chuyển sang trang đăng nhập Google...'
+            : 'Đang mở cửa sổ đăng nhập Google...';
+        try {
+            const needConsent = (() => {
+                try { return localStorage.getItem(OAUTH_SCOPE_FLAG) !== 'drive.file'; } catch (_) { return true; }
+            })();
+            tokenClient.requestAccessToken({ prompt: needConsent ? 'consent' : '' });
+        } catch (error) {
+            console.error('requestAccessToken:', error);
+            if (!useRedirect) {
+                startGoogleLogin(true);
+                return;
+            }
+            statusEl.textContent = 'Không mở được đăng nhập Google. Tải lại trang trên Chrome hoặc Safari.';
+        }
+        if (!useRedirect) {
+            window.setTimeout(() => {
+                if (!currentAccessToken && statusEl.textContent.indexOf('Đang mở cửa sổ') === 0) {
+                    statusEl.textContent = 'Cửa sổ Google không hiện. Cho phép popup cho klookermediavn.com, hoặc bấm lại — hệ thống sẽ đăng nhập trên cùng tab.';
+                }
+            }, 4000);
+        }
+    }
+
     async function handleTokenResponse(response) {
         const statusEl = document.getElementById('loadingStatus');
 
         if (response.error) {
-            statusEl.textContent = 'Đăng nhập không thành công. Vui lòng thử lại.';
+            if (String(response.error) === 'access_denied') {
+                statusEl.textContent = 'Google chưa cho app chạy công khai. Vào Google Cloud → OAuth consent screen → Publish app (In production).';
+            } else {
+                statusEl.textContent = 'Đăng nhập không thành công. Vui lòng thử lại.';
+            }
             return;
         }
 
@@ -2473,17 +2786,22 @@
         currentAccessToken = response.access_token;
 
         try {
-            const userInfo = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                 headers: { Authorization: `Bearer ${response.access_token}` }
-            }).then((res) => res.json());
-
+            });
+            const userInfo = userRes.ok ? await userRes.json() : { email: '' };
             currentUser = userInfo;
             saveSession(response.access_token, response.expires_in, userInfo);
+            try { localStorage.setItem(OAUTH_SCOPE_FLAG, 'drive.file'); } catch (_) {}
             showChatScreen();
             await loadDriveImages();
         } catch (error) {
             console.error('Login error:', error);
-            statusEl.textContent = 'Đăng nhập thành công nhưng không đọc được tài khoản. Vui lòng thử lại.';
+            currentUser = { email: '' };
+            saveSession(response.access_token, response.expires_in, currentUser);
+            try { localStorage.setItem(OAUTH_SCOPE_FLAG, 'drive.file'); } catch (_) {}
+            showChatScreen();
+            await loadDriveImages();
         }
     }
 
@@ -2491,78 +2809,64 @@
         if (isLoadingDrive || !currentAccessToken) return;
 
         isLoadingDrive = true;
-        updateStatus('Đang tải ảnh...', 'loading');
+        updateStatus('Đang tải thư viện đã chọn...', 'loading');
 
         try {
             await loadIndexFromDb();
 
-            // Try cache first for instant display
             const cached = loadDriveCache();
             if (cached && cached.images.length > 0) {
                 allDriveImages = cached.images;
                 folderMap = cached.folders;
                 renderFolderView();
-                const indexedCount = allDriveImages.filter(isImageIndexed).length;
-                updateStatus(`Đã tải ${allDriveImages.length} ảnh (cache). Đang kiểm tra ảnh mới...`, 'success');
+                updateStatus(`Đã tải ${allDriveImages.length} ảnh (cache). Đang đồng bộ...`, 'success');
                 runBackgroundIndexing(allDriveImages);
-
-                // Refresh in background to detect new images
-                fetchDriveImages(currentAccessToken).then(async (freshImages) => {
-                    const newIds = new Set(freshImages.map((img) => img.id));
-                    const oldIds = new Set(allDriveImages.map((img) => img.id));
-                    const hasNew = freshImages.some((img) => !oldIds.has(img.id));
-                    const hasRemoved = allDriveImages.some((img) => !newIds.has(img.id));
-
-                    if (hasNew || hasRemoved) {
-                        allDriveImages = freshImages;
-                        const parentIds = [...new Set(freshImages.map((img) => img.parents?.[0]).filter(Boolean))];
-                        const names = await fetchFolderNames(currentAccessToken, parentIds);
-                        names.forEach((name, id) => folderMap.set(id, name));
-                        saveDriveCache(allDriveImages, folderMap);
-                        renderFolderView();
-                        const added = freshImages.filter((img) => !oldIds.has(img.id)).length;
-                        updateStatus(`Tìm thấy ${added} ảnh mới! Tổng: ${allDriveImages.length} ảnh.`, 'success');
-                        runBackgroundIndexing(allDriveImages);
-                    } else {
-                        updateStatus(`${allDriveImages.length} ảnh · ${folderMap.size} thư mục — không có ảnh mới.`, 'success');
-                    }
-                }).catch(() => {});
-                return;
             }
 
-            // No cache — full fetch
-            document.getElementById('galleryStatus').textContent = 'Đang quét Drive...';
-            allDriveImages = await fetchDriveImages(currentAccessToken);
+            const savedIds = loadPickedIds();
+            document.getElementById('galleryStatus').textContent = 'Đang đồng bộ ảnh đã chọn...';
+            const freshImages = await fetchDriveImages(currentAccessToken);
+            const have = new Set(freshImages.map((img) => img.id));
+            for (const id of savedIds) {
+                if (have.has(id)) continue;
+                const meta = await fetchDriveFileMeta(id);
+                if (meta && isImageFile(meta)) {
+                    freshImages.push(meta);
+                    have.add(id);
+                }
+            }
 
-            if (allDriveImages.length > 0) {
-                const parentIds = [...new Set(allDriveImages.map((img) => img.parents?.[0]).filter(Boolean))];
-                document.getElementById('galleryStatus').textContent = 'Đang tải tên thư mục...';
+            if (freshImages.length > 0) {
+                allDriveImages = freshImages;
+                savePickedIds(freshImages.map((img) => img.id));
+                const parentIds = [...new Set(freshImages.map((img) => img.parents?.[0]).filter(Boolean))];
                 const names = await fetchFolderNames(currentAccessToken, parentIds);
                 names.forEach((name, id) => folderMap.set(id, name));
                 saveDriveCache(allDriveImages, folderMap);
-
                 renderFolderView();
-                updateStatus(`Đã tải ${allDriveImages.length} ảnh trong ${folderMap.size} thư mục. AI đang học nền — tìm kiếm dùng được ngay.`, 'success');
+                updateStatus(`Thư viện: ${allDriveImages.length} ảnh · ${folderMap.size} thư mục. Bấm Thêm từ Drive nếu cần thêm shoot.`, 'success');
                 runBackgroundIndexing(allDriveImages);
-            } else {
-                updateStatus('Chưa thấy ảnh trong Drive. Upload ảnh (.jpg, .png) rồi đăng nhập lại.', 'error');
-                document.getElementById('driveGallery').innerHTML = '<div class="gallery-empty">Chưa có ảnh trong Drive</div>';
-                document.getElementById('galleryStatus').textContent = '0 ảnh';
+            } else if (!allDriveImages.length) {
+                renderEmptyLibrary();
+                updateStatus('Chưa có thư viện. Bấm Thêm từ Drive, vào folder shoot, chọn nhiều ảnh.', 'success');
             }
         } catch (error) {
             console.error('Error loading Drive images:', error);
             const message = getDriveErrorMessage(error);
             updateStatus(message, 'error');
             document.getElementById('galleryStatus').textContent = 'Lỗi tải ảnh';
-            const reloginHint = (error?.status === 403 && !String(error?.result?.error?.message || '').includes('accessNotConfigured'))
-                ? `<br><button onclick="logout()" style="margin-top:12px;padding:8px 20px;background:#004ac6;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Đăng xuất & Thử lại</button>`
-                : '';
-            document.getElementById('driveGallery').innerHTML = `<div class="gallery-empty">${message}${reloginHint}</div>`;
+            if (!allDriveImages.length) {
+                const reloginHint = (error?.status === 403 && !String(error?.result?.error?.message || '').includes('accessNotConfigured'))
+                    ? `<br><button onclick="logout()" style="margin-top:12px;padding:8px 20px;background:#004ac6;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Đăng xuất & Thử lại</button>`
+                    : '';
+                document.getElementById('driveGallery').innerHTML = `<div class="gallery-empty">${message}${reloginHint}</div>`;
+            }
         } finally {
             isLoadingDrive = false;
         }
     }
 
+    document.getElementById('pickDriveBtn').addEventListener('click', () => openDrivePicker());
     document.getElementById('showAllBtn').addEventListener('click', () => {
         renderFolderView(); updateStatus('', 'success');
     });
@@ -2922,10 +3226,10 @@
 
         document.getElementById('chatScreen').classList.add('hidden');
         document.getElementById('loginScreen').style.display = 'flex';
-        document.getElementById('loadingStatus').textContent = 'Đăng nhập bằng Gmail để tìm ảnh trong Google Drive của bạn';
-        document.getElementById('galleryStatus').textContent = 'Chưa tải ảnh';
+        document.getElementById('loadingStatus').textContent = 'Đăng nhập Gmail rồi chọn folder shoot từ Drive';
+        document.getElementById('galleryStatus').textContent = 'Chưa chọn ảnh';
         document.getElementById('showAllBtn').classList.add('hidden');
-        document.getElementById('driveGallery').innerHTML = '<div class="gallery-empty">Đăng nhập Gmail để xem ảnh trong Drive</div>';
+        document.getElementById('driveGallery').innerHTML = '<div class="gallery-empty">Đăng nhập rồi chọn folder shoot từ Drive</div>';
         updateStatus('');
 
         renderGoogleLoginButton();
