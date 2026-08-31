@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-    <meta name="app-version" content="2.3.4-scope-file-only"/>
+    <meta name="app-version" content="2.3.5-public-drive-link"/>
     <title>Klooker Media Image Finder</title>
     <meta name="application-name" content="Klooker Media Image Finder"/>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -1270,7 +1270,7 @@
                 <li><span class="material-symbols-outlined">lock</span><span>App chỉ đọc file bạn chọn (<code>drive.file</code>), không xem cả Drive cá nhân.</span></li>
                 <li><span class="material-symbols-outlined">face_retouching_natural</span><span>Tìm mặt: mở folder → nút tím → upload ảnh bạn hoặc link Drive công khai. App so với mọi mặt trong từng ảnh, kể cả ảnh nhóm đông người.</span></li>
                 <li><span class="material-symbols-outlined">event</span><span>Trong folder: sắp xếp Mới nhất / Cũ nhất / Tên. Bật “Tìm trong folder” để AI không lẫn shoot khác.</span></li>
-                <li><span class="material-symbols-outlined">link</span><span>Có link Drive công khai: dán vào ô “hoặc dán link Drive” để xem nhanh, không cần thêm vào thư viện.</span></li>
+                <li><span class="material-symbols-outlined">link</span><span>Link Drive công khai: dán file <em>hoặc folder</em> (Anyone with the link). App thêm ảnh vào thư viện rồi mới tìm được. Không dùng link “Restricted”.</span></li>
             </ul>
         </section>
     </div>
@@ -1378,7 +1378,7 @@
             <input
                 type="text"
                 id="linkPasteInput"
-                placeholder="Dán link Google Drive chia sẻ công khai vào đây..."
+                placeholder="Dán link file hoặc folder Drive công khai (folders/... hoặc file/d/...)"
                 class="w-full bg-surface-container-low border-none rounded-full px-6 py-3.5 focus:ring-2 focus:ring-primary/20 transition-all text-sm"
                 autocomplete="off"
             />
@@ -1387,7 +1387,7 @@
                 class="shrink-0 bg-surface-container text-on-surface-variant px-5 py-3.5 rounded-full hover:bg-surface-container-high transition flex items-center gap-2 font-semibold text-sm border border-outline-variant"
             >
                 <span class="material-symbols-outlined">open_in_new</span>
-                <span class="hidden sm:inline">Xem</span>
+                <span class="hidden sm:inline">Thêm</span>
             </button>
         </form>
 
@@ -1497,7 +1497,7 @@
     const GOOGLE_API_KEY = 'AIzaSyDnjdN92IRnso3eWRXn_uiu2_qyi97cKeA';
     const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
     const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email openid profile';
-    const APP_VERSION = '2.3.4-scope-file-only';
+    const APP_VERSION = '2.3.5-public-drive-link';
     const PICKER_IMAGE_MIMES = 'image/png,image/jpeg,image/jpg,image/gif,image/webp,image/bmp,image/tiff,image/heic,image/heif';
     const AI_PROXY_URL = 'https://gemini-proxy-two-mu.vercel.app/api/gemini';
     const STOP_WORDS = new Set(['tim', 'anh', 'image', 'photo', 'theo', 'trong', 'giup', 'cho', 'tooi', 'can']);
@@ -3336,12 +3336,18 @@
 
     document.getElementById('faceDriveLinkBtn').addEventListener('click', async () => {
         const raw = document.getElementById('faceDriveLinkInput').value.trim();
-        const fileId = extractDriveFileId(raw);
-        if (!fileId) {
+        const parsed = parseDriveLink(raw);
+        if (!parsed) {
             document.getElementById('faceDetectStatus').textContent = 'Link Drive không hợp lệ.';
             document.getElementById('facePreviewArea').classList.remove('hidden');
             return;
         }
+        if (parsed.type === 'folder') {
+            document.getElementById('faceDetectStatus').textContent = 'Đây là link folder. Dán vào ô “dán link Drive” phía trên để thêm ảnh, rồi hẵng tìm mặt.';
+            document.getElementById('facePreviewArea').classList.remove('hidden');
+            return;
+        }
+        const fileId = parsed.id;
         const urls = [
             `https://lh3.googleusercontent.com/d/${fileId}=s800`,
             `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`,
@@ -3350,14 +3356,19 @@
                 : null,
         ].filter(Boolean);
         document.getElementById('faceDetectStatus').textContent = 'Đang tải ảnh từ link Drive...';
-        const canvas = await loadCanvasFromUrls(urls);
-        if (!canvas) {
-            document.getElementById('faceInputPane').classList.remove('hidden');
-            document.getElementById('facePreviewArea').classList.remove('hidden');
-            document.getElementById('faceDetectStatus').textContent = 'Không tải được ảnh. Kiểm tra file đã chia sẻ công khai.';
+        document.getElementById('facePreviewArea').classList.remove('hidden');
+        const blob = await driveGetBlob(fileId);
+        if (!blob || !String(blob.type || '').startsWith('image/')) {
+            const canvas = await loadCanvasFromUrls(urls);
+            if (!canvas) {
+                document.getElementById('faceInputPane').classList.remove('hidden');
+                document.getElementById('faceDetectStatus').textContent = 'Không tải được ảnh. Folder thì dán vào ô “dán link Drive” phía trên. File phải Anyone with the link.';
+                return;
+            }
+            await prepareQueryFaceFromSrc(canvas.toDataURL('image/jpeg', 0.92));
             return;
         }
-        await prepareQueryFaceFromSrc(canvas.toDataURL('image/jpeg', 0.92));
+        await prepareQueryFaceFromSrc(URL.createObjectURL(blob));
     });
 
     async function descriptorsForFolderImage(image) {
@@ -3446,61 +3457,146 @@
     });
 
     // ── Paste Drive link ─────────────────────────────────────────────────
+    function parseDriveLink(raw) {
+        const str = String(raw || '').trim();
+        if (!str) return null;
+        const folder = str.match(/\/folders\/([a-zA-Z0-9_-]{10,})/i);
+        if (folder) return { type: 'folder', id: folder[1] };
+        const file = str.match(/\/file\/d\/([a-zA-Z0-9_-]{10,})/i)
+            || str.match(/\/open\?[^#]*[?&]?id=([a-zA-Z0-9_-]{10,})/i)
+            || str.match(/[?&]id=([a-zA-Z0-9_-]{10,})/)
+            || str.match(/\/uc\?[^#]*id=([a-zA-Z0-9_-]{10,})/i)
+            || str.match(/\/d\/([a-zA-Z0-9_-]{10,})(?:\/|$|\?)/)
+            || str.match(/^([a-zA-Z0-9_-]{25,})$/);
+        if (file) return { type: 'file', id: file[1] };
+        return null;
+    }
+
     function extractDriveFileId(url) {
-        const patterns = [
-            /\/file\/d\/([a-zA-Z0-9_-]{10,})/,
-            /[?&]id=([a-zA-Z0-9_-]{10,})/,
-            /\/d\/([a-zA-Z0-9_-]{10,})\//,
-            /^([a-zA-Z0-9_-]{25,})$/   // raw ID
-        ];
-        const str = url.trim();
-        for (const p of patterns) {
-            const m = str.match(p);
-            if (m) return m[1];
+        const parsed = parseDriveLink(url);
+        return parsed?.id || null;
+    }
+
+    function driveV3Url(path, params = {}) {
+        const url = new URL(`https://www.googleapis.com/drive/v3/${String(path).replace(/^\//, '')}`);
+        const merged = {
+            key: GOOGLE_API_KEY,
+            supportsAllDrives: 'true',
+            includeItemsFromAllDrives: 'true',
+            ...params,
+        };
+        Object.entries(merged).forEach(([k, v]) => {
+            if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, String(v));
+        });
+        return url.toString();
+    }
+
+    async function driveGetJson(path, params = {}) {
+        const url = driveV3Url(path, params);
+        const tries = [];
+        if (currentAccessToken) tries.push({ headers: { Authorization: `Bearer ${currentAccessToken}` } });
+        tries.push({ headers: {} });
+        let lastRes = null;
+        for (const opt of tries) {
+            const res = await fetch(url, opt);
+            lastRes = res;
+            if (res.ok) return res.json();
+            if (![401, 403, 404].includes(res.status)) break;
+        }
+        const data = lastRes ? await lastRes.json().catch(() => ({})) : {};
+        const err = new Error(data?.error?.message || 'Không đọc được link Drive.');
+        err.status = lastRes?.status;
+        throw err;
+    }
+
+    async function driveGetBlob(fileId) {
+        const url = driveV3Url(`files/${fileId}`, { alt: 'media' });
+        const tries = [];
+        if (currentAccessToken) tries.push({ headers: { Authorization: `Bearer ${currentAccessToken}` } });
+        tries.push({ headers: {} });
+        for (const opt of tries) {
+            const res = await fetch(url, opt);
+            if (res.ok) return res.blob();
         }
         return null;
+    }
+
+    async function listPublicFolderImages(folderId, recursive = true) {
+        const images = [];
+        const subfolders = [];
+        let pageToken = '';
+        do {
+            const params = {
+                q: `'${folderId}' in parents and trashed=false`,
+                pageSize: '100',
+                fields: 'nextPageToken,files(id,name,mimeType,createdTime,modifiedTime,webContentLink,thumbnailLink,iconLink,parents)',
+            };
+            if (pageToken) params.pageToken = pageToken;
+            const data = await driveGetJson('files', params);
+            (data.files || []).forEach((file) => {
+                if (file.mimeType === 'application/vnd.google-apps.folder') subfolders.push(file);
+                else if (isImageFile(file)) images.push(file);
+            });
+            pageToken = data.nextPageToken || '';
+        } while (pageToken);
+        if (recursive) {
+            for (const sub of subfolders) {
+                images.push(...await listPublicFolderImages(sub.id, true));
+            }
+        }
+        return images;
+    }
+
+    async function importPublicDriveLink(raw) {
+        const parsed = parseDriveLink(raw);
+        if (!parsed) {
+            throw new Error('Link không hợp lệ. Dán drive.google.com/file/d/... hoặc /folders/...');
+        }
+        if (parsed.type === 'folder') {
+            updateStatus('Đang đọc folder công khai...', 'loading');
+            const kids = await listPublicFolderImages(parsed.id, true);
+            if (!kids.length) {
+                throw new Error('Folder trống hoặc chưa để “Anyone with the link”. Picker (Thêm từ Drive) vẫn dùng được nếu folder của bạn.');
+            }
+            folderMap.set(parsed.id, { name: 'Folder Drive', createdTime: null });
+            try {
+                const meta = await driveGetJson(`files/${parsed.id}`, { fields: 'id,name,createdTime' });
+                if (meta?.name) folderMap.set(parsed.id, { name: meta.name, createdTime: meta.createdTime || null });
+            } catch (_) {}
+            await addImagesToLibrary(kids);
+            return { kind: 'folder', count: kids.length };
+        }
+
+        updateStatus('Đang đọc file công khai...', 'loading');
+        const meta = await driveGetJson(`files/${parsed.id}`, {
+            fields: 'id,name,mimeType,createdTime,modifiedTime,webContentLink,thumbnailLink,iconLink,parents',
+        });
+        if (meta.mimeType === 'application/vnd.google-apps.folder') {
+            return importPublicDriveLink(`https://drive.google.com/drive/folders/${parsed.id}`);
+        }
+        if (!isImageFile(meta)) {
+            throw new Error('Link không phải ảnh (JPG/PNG/WebP...).');
+        }
+        await addImagesToLibrary([meta]);
+        return { kind: 'file', file: meta };
     }
 
     document.getElementById('linkPasteForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const raw = document.getElementById('linkPasteInput').value.trim();
         if (!raw) return;
-
-        const fileId = extractDriveFileId(raw);
-        if (!fileId) {
-            updateStatus('Link không hợp lệ. Hãy dán link Google Drive dạng drive.google.com/file/d/...', 'error');
-            return;
+        try {
+            const result = await importPublicDriveLink(raw);
+            document.getElementById('linkPasteInput').value = '';
+            if (result.kind === 'folder') {
+                updateStatus(`Đã thêm ${result.count} ảnh công khai vào thư viện. Có thể tìm tên / AI / mặt ngay.`, 'success');
+            } else {
+                updateStatus(`Đã thêm “${result.file.name}” vào thư viện.`, 'success');
+                openImageModal(result.file);
+            }
+        } catch (err) {
+            updateStatus(err.message || 'Không đọc được link Drive công khai.', 'error');
         }
-
-        // Build a synthetic image object for the modal
-        const thumbUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
-        const viewUrl = `https://drive.google.com/file/d/${fileId}/view`;
-
-        // Try to get filename from Drive API if user is logged in
-        let fileName = `Drive file (${fileId.slice(0, 8)}...)`;
-        if (currentAccessToken) {
-            try {
-                const res = await fetch(
-                    `https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,createdTime,thumbnailLink`,
-                    { headers: { Authorization: `Bearer ${currentAccessToken}` } }
-                );
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.name) fileName = data.name;
-                    if (data.thumbnailLink) {
-                        openImageModal({ id: fileId, name: fileName, thumbnailLink: data.thumbnailLink, createdTime: data.createdTime, webContentLink: viewUrl });
-                        document.getElementById('linkPasteInput').value = '';
-                        updateStatus('', '');
-                        return;
-                    }
-                }
-            } catch (_) {}
-        }
-
-        // Fallback: open with public thumbnail (works for publicly shared files)
-        openImageModal({ id: fileId, name: fileName, thumbnailLink: thumbUrl, webContentLink: viewUrl });
-        document.getElementById('linkPasteInput').value = '';
-        updateStatus('', '');
     });
 
     document.getElementById('chatForm').addEventListener('submit', async (e) => {
