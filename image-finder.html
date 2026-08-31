@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-    <meta name="app-version" content="2.3.5-public-drive-link"/>
+    <meta name="app-version" content="2.3.6-drive-link-intercept"/>
     <title>Klooker Media Image Finder</title>
     <meta name="application-name" content="Klooker Media Image Finder"/>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -1497,7 +1497,7 @@
     const GOOGLE_API_KEY = 'AIzaSyDnjdN92IRnso3eWRXn_uiu2_qyi97cKeA';
     const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
     const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email openid profile';
-    const APP_VERSION = '2.3.5-public-drive-link';
+    const APP_VERSION = '2.3.6-drive-link-intercept';
     const PICKER_IMAGE_MIMES = 'image/png,image/jpeg,image/jpg,image/gif,image/webp,image/bmp,image/tiff,image/heic,image/heif';
     const AI_PROXY_URL = 'https://gemini-proxy-two-mu.vercel.app/api/gemini';
     const STOP_WORDS = new Set(['tim', 'anh', 'image', 'photo', 'theo', 'trong', 'giup', 'cho', 'tooi', 'can']);
@@ -3441,10 +3441,15 @@
         if (!isScopedSearch) updateStatus('', 'success');
     });
 
-    document.getElementById('quickSearchForm').addEventListener('submit', (e) => {
+    document.getElementById('quickSearchForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const query = document.getElementById('quickInput').value.trim();
-        if (!query || !allDriveImages.length) return;
+        if (!query) return;
+        if (await handlePastedDriveLink(query)) {
+            document.getElementById('quickInput').value = '';
+            return;
+        }
+        if (!allDriveImages.length) return;
 
         const result = searchByFilename(query);
         isSearchMode = true;
@@ -3581,21 +3586,34 @@
         return { kind: 'file', file: meta };
     }
 
-    document.getElementById('linkPasteForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const raw = document.getElementById('linkPasteInput').value.trim();
-        if (!raw) return;
+    async function handlePastedDriveLink(raw) {
+        const parsed = parseDriveLink(raw);
+        if (!parsed) return false;
         try {
             const result = await importPublicDriveLink(raw);
-            document.getElementById('linkPasteInput').value = '';
             if (result.kind === 'folder') {
-                updateStatus(`Đã thêm ${result.count} ảnh công khai vào thư viện. Có thể tìm tên / AI / mặt ngay.`, 'success');
+                updateStatus(`Đã thêm ${result.count} ảnh từ folder công khai. Có thể tìm tên / AI / mặt.`, 'success');
             } else {
                 updateStatus(`Đã thêm “${result.file.name}” vào thư viện.`, 'success');
                 openImageModal(result.file);
             }
         } catch (err) {
-            updateStatus(err.message || 'Không đọc được link Drive công khai.', 'error');
+            if (parsed.type === 'folder' && currentAccessToken) {
+                updateStatus('Google không cho đọc folder bằng link. Đang mở đúng folder — chọn nhiều ảnh (Cmd/Ctrl + A).', 'loading');
+                await openDrivePicker({ parentId: parsed.id });
+                return true;
+            }
+            updateStatus(err.message || 'Không đọc được link Drive. Folder của bạn hãy bấm Thêm từ Drive.', 'error');
+        }
+        return true;
+    }
+
+    document.getElementById('linkPasteForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const raw = document.getElementById('linkPasteInput').value.trim();
+        if (!raw) return;
+        if (await handlePastedDriveLink(raw)) {
+            document.getElementById('linkPasteInput').value = '';
         }
     });
 
@@ -3603,7 +3621,15 @@
         e.preventDefault();
 
         const prompt = document.getElementById('promptInput').value.trim();
-        if (!prompt || !allDriveImages.length) return;
+        if (!prompt) return;
+        if (await handlePastedDriveLink(prompt)) {
+            document.getElementById('promptInput').value = '';
+            return;
+        }
+        if (!allDriveImages.length) {
+            updateStatus('Chưa có thư viện. Bấm Thêm từ Drive hoặc dán link vào ô dưới.', 'error');
+            return;
+        }
 
         document.getElementById('sendBtn').disabled = true;
         const scopeLabel = isScopedSearch && currentFolderName ? ` trong "${currentFolderName}"` : '';
