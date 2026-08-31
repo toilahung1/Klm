@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-    <meta name="app-version" content="2.3.6-drive-link-intercept"/>
+    <meta name="app-version" content="2.3.7-link-multiselect"/>
     <title>Klooker Media Image Finder</title>
     <meta name="application-name" content="Klooker Media Image Finder"/>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -706,6 +706,124 @@
 
         .face-modal { max-width: 460px; }
         .face-modal-lead { font-size: 13px; color: #434655; line-height: 1.5; margin: -8px 0 16px; }
+
+        .link-pick-modal {
+            background: white;
+            border-radius: 20px;
+            padding: 20px 20px 16px;
+            width: 100%;
+            max-width: 720px;
+            max-height: min(88vh, 820px);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        .link-pick-lead { font-size: 13px; color: #434655; line-height: 1.5; margin: 0 0 12px; }
+        .link-pick-loading {
+            padding: 36px 12px;
+            text-align: center;
+            color: #737686;
+            font-size: 13px;
+        }
+        #linkPickLoading.hidden,
+        .link-pick-fallback.hidden,
+        #linkPickGridWrap.hidden { display: none !important; }
+        .link-pick-fallback {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 4px 0 8px;
+        }
+        @media (max-width: 560px) {
+            .link-pick-fallback { grid-template-columns: 1fr; }
+        }
+        .link-pick-choice {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+            text-align: left;
+            border: 1.5px solid #e1e2ea;
+            background: #f8f9fb;
+            border-radius: 14px;
+            padding: 14px 14px 16px;
+            cursor: pointer;
+        }
+        .link-pick-choice:hover { border-color: #004ac6; background: #eef3ff; }
+        .link-pick-choice.primary {
+            border-color: #004ac6;
+            background: #eef3ff;
+        }
+        .link-pick-choice .material-symbols-outlined { font-size: 22px; color: #004ac6; }
+        .link-pick-choice strong { font-size: 14px; color: #1a1c23; }
+        .link-pick-choice span { font-size: 12px; color: #737686; line-height: 1.4; }
+        .link-pick-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .link-pick-tool-btn {
+            border: 1.5px solid #e1e2ea;
+            background: #fff;
+            border-radius: 999px;
+            padding: 7px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #3d3f52;
+            cursor: pointer;
+        }
+        .link-pick-tool-btn:hover { border-color: #004ac6; color: #004ac6; }
+        .link-pick-count { font-size: 12px; color: #737686; margin-left: auto; }
+        .link-pick-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+            gap: 8px;
+            overflow: auto;
+            min-height: 160px;
+            max-height: min(52vh, 480px);
+            padding: 2px;
+        }
+        .link-pick-card {
+            position: relative;
+            border: 2px solid #e1e2ea;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            background: #f0f1f5;
+            aspect-ratio: 1;
+        }
+        .link-pick-card.selected { border-color: #004ac6; box-shadow: 0 0 0 2px rgba(0,74,198,0.25); }
+        .link-pick-card img {
+            width: 100%; height: 100%; object-fit: cover; display: block;
+        }
+        .link-pick-check {
+            position: absolute; top: 6px; right: 6px;
+            width: 22px; height: 22px; border-radius: 6px;
+            background: rgba(255,255,255,0.92);
+            border: 1.5px solid #c5c7d4;
+            display: flex; align-items: center; justify-content: center;
+            color: transparent; font-size: 16px;
+        }
+        .link-pick-card.selected .link-pick-check {
+            background: #004ac6; border-color: #004ac6; color: #fff;
+        }
+        .link-pick-actions {
+            display: flex; align-items: center; gap: 10px;
+            margin-top: 12px; padding-top: 10px; border-top: 1px solid #eef0f5;
+        }
+        .link-pick-add {
+            flex: 1;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            padding: 11px;
+            background: #004ac6; color: #fff; border: none; border-radius: 12px;
+            font-size: 14px; font-weight: 700; cursor: pointer;
+        }
+        .link-pick-add:disabled { opacity: 0.4; cursor: not-allowed; }
+        .link-pick-cancel {
+            font-size: 13px; color: #737686; background: none; border: none; cursor: pointer;
+        }
         .face-source-row { display: flex; gap: 8px; margin-bottom: 12px; }
         .face-source-btn {
             flex: 1; border: 1.5px solid #e1e2ea; background: #f8f9fb;
@@ -1270,7 +1388,7 @@
                 <li><span class="material-symbols-outlined">lock</span><span>App chỉ đọc file bạn chọn (<code>drive.file</code>), không xem cả Drive cá nhân.</span></li>
                 <li><span class="material-symbols-outlined">face_retouching_natural</span><span>Tìm mặt: mở folder → nút tím → upload ảnh bạn hoặc link Drive công khai. App so với mọi mặt trong từng ảnh, kể cả ảnh nhóm đông người.</span></li>
                 <li><span class="material-symbols-outlined">event</span><span>Trong folder: sắp xếp Mới nhất / Cũ nhất / Tên. Bật “Tìm trong folder” để AI không lẫn shoot khác.</span></li>
-                <li><span class="material-symbols-outlined">link</span><span>Link Drive công khai: dán file <em>hoặc folder</em> (Anyone with the link). App thêm ảnh vào thư viện rồi mới tìm được. Không dùng link “Restricted”.</span></li>
+                <li><span class="material-symbols-outlined">link</span><span>Link Drive: dán folder/file. Folder sẽ mở cửa sổ chọn nhiều ảnh hoặc chọn toàn bộ — không search chữ URL.</span></li>
             </ul>
         </section>
     </div>
@@ -1378,7 +1496,7 @@
             <input
                 type="text"
                 id="linkPasteInput"
-                placeholder="Dán link file hoặc folder Drive công khai (folders/... hoặc file/d/...)"
+                placeholder="Dán link folder/file Drive — sẽ hiện chọn nhiều hoặc chọn toàn bộ"
                 class="w-full bg-surface-container-low border-none rounded-full px-6 py-3.5 focus:ring-2 focus:ring-primary/20 transition-all text-sm"
                 autocomplete="off"
             />
@@ -1491,13 +1609,53 @@
     </div>
 </div>
 
+<!-- Chọn ảnh từ link folder Drive -->
+<div id="linkPickModal" class="face-modal-overlay hidden">
+    <div class="link-pick-modal">
+        <div class="face-modal-header" style="margin-bottom:12px;">
+            <span class="material-symbols-outlined" style="color:#004ac6">folder_open</span>
+            <h3 id="linkPickTitle">Chọn ảnh từ folder</h3>
+            <button type="button" class="face-modal-close" id="linkPickCloseBtn">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <p class="link-pick-lead" id="linkPickLead">Chọn từng ảnh, chọn nhiều, hoặc thêm toàn bộ folder vào thư viện.</p>
+        <div id="linkPickLoading" class="link-pick-loading">Đang đọc ảnh trong folder...</div>
+        <div id="linkPickFallback" class="link-pick-fallback hidden">
+            <button type="button" class="link-pick-choice" id="linkPickManyBtn">
+                <span class="material-symbols-outlined">photo_library</span>
+                <strong>Chọn nhiều ảnh</strong>
+                <span>Mở cửa sổ Drive, tick từng tấm hoặc giữ Ctrl/Cmd rồi click.</span>
+            </button>
+            <button type="button" class="link-pick-choice primary" id="linkPickAllBtn">
+                <span class="material-symbols-outlined">select_all</span>
+                <strong>Chọn toàn bộ ảnh</strong>
+                <span>Thêm hết ảnh trong folder. Nếu Google chặn list, cửa sổ Drive mở — bấm Ctrl/Cmd+A rồi Select.</span>
+            </button>
+        </div>
+        <div id="linkPickGridWrap" class="hidden">
+            <div class="link-pick-toolbar">
+                <button type="button" class="link-pick-tool-btn" id="linkPickSelectAllBtn">Chọn tất cả</button>
+                <button type="button" class="link-pick-tool-btn" id="linkPickSelectNoneBtn">Bỏ chọn</button>
+                <button type="button" class="link-pick-tool-btn" id="linkPickAddAllBtn" style="border-color:#004ac6;color:#004ac6;">Thêm toàn bộ</button>
+                <span class="link-pick-count" id="linkPickCount">0 đã chọn</span>
+            </div>
+            <div id="linkPickGrid" class="link-pick-grid"></div>
+        </div>
+        <div class="link-pick-actions" id="linkPickActions" style="display:none;">
+            <button type="button" class="link-pick-add" id="linkPickAddBtn" disabled>Thêm ảnh đã chọn</button>
+            <button type="button" class="link-pick-cancel" id="linkPickCancelBtn">Huỷ</button>
+        </div>
+    </div>
+</div>
+
 <script>
     const GOOGLE_CLIENT_ID = '42024300272-hqn54cffhmal5tuick7uqcerufpulhlp.apps.googleusercontent.com';
     const GOOGLE_APP_ID = '42024300272';
     const GOOGLE_API_KEY = 'AIzaSyDnjdN92IRnso3eWRXn_uiu2_qyi97cKeA';
     const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
     const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email openid profile';
-    const APP_VERSION = '2.3.6-drive-link-intercept';
+    const APP_VERSION = '2.3.7-link-multiselect';
     const PICKER_IMAGE_MIMES = 'image/png,image/jpeg,image/jpg,image/gif,image/webp,image/bmp,image/tiff,image/heic,image/heif';
     const AI_PROXY_URL = 'https://gemini-proxy-two-mu.vercel.app/api/gemini';
     const STOP_WORDS = new Set(['tim', 'anh', 'image', 'photo', 'theo', 'trong', 'giup', 'cho', 'tooi', 'can']);
@@ -1777,6 +1935,11 @@
 
     async function openDrivePicker(options = {}) {
         const parentId = options.parentId || null;
+        const imagesOnly = !!options.imagesOnly;
+        const navHidden = !!options.navHidden;
+        const title = options.title || (parentId
+            ? (imagesOnly ? 'Chọn nhiều ảnh — click từng tấm hoặc Ctrl/Cmd+A chọn hết' : 'Chọn folder hoặc nhiều ảnh')
+            : 'Chọn folder shoot hoặc nhiều ảnh');
         if (!currentAccessToken) {
             showToast('Hãy đăng nhập lại rồi chọn Drive');
             return;
@@ -1789,10 +1952,11 @@
         }
 
         const imageView = new google.picker.DocsView(google.picker.ViewId.DOCS_IMAGES)
-            .setIncludeFolders(true)
-            .setSelectFolderEnabled(true)
+            .setIncludeFolders(!imagesOnly)
+            .setSelectFolderEnabled(!imagesOnly)
             .setMimeTypes(PICKER_IMAGE_MIMES);
         if (parentId) imageView.setParent(parentId);
+        if (google.picker.DocsViewMode?.GRID) imageView.setMode(google.picker.DocsViewMode.GRID);
 
         const builder = new google.picker.PickerBuilder()
             .setAppId(GOOGLE_APP_ID)
@@ -1801,10 +1965,14 @@
             .addView(imageView)
             .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
             .enableFeature(google.picker.Feature.SUPPORT_DRIVES)
-            .setTitle(parentId ? 'Chọn nhiều ảnh trong folder (Ctrl/Cmd + A)' : 'Chọn folder shoot hoặc nhiều ảnh')
+            .setTitle(title)
             .setCallback(handlePickerData);
 
-        if (google.picker.ViewId.FOLDERS) {
+        if (navHidden && google.picker.Feature.NAV_HIDDEN) {
+            builder.enableFeature(google.picker.Feature.NAV_HIDDEN);
+        }
+
+        if (!imagesOnly && google.picker.ViewId.FOLDERS) {
             const folderView = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
                 .setIncludeFolders(true)
                 .setSelectFolderEnabled(true);
@@ -3558,18 +3726,8 @@
             throw new Error('Link không hợp lệ. Dán drive.google.com/file/d/... hoặc /folders/...');
         }
         if (parsed.type === 'folder') {
-            updateStatus('Đang đọc folder công khai...', 'loading');
-            const kids = await listPublicFolderImages(parsed.id, true);
-            if (!kids.length) {
-                throw new Error('Folder trống hoặc chưa để “Anyone with the link”. Picker (Thêm từ Drive) vẫn dùng được nếu folder của bạn.');
-            }
-            folderMap.set(parsed.id, { name: 'Folder Drive', createdTime: null });
-            try {
-                const meta = await driveGetJson(`files/${parsed.id}`, { fields: 'id,name,createdTime' });
-                if (meta?.name) folderMap.set(parsed.id, { name: meta.name, createdTime: meta.createdTime || null });
-            } catch (_) {}
-            await addImagesToLibrary(kids);
-            return { kind: 'folder', count: kids.length };
+            await openLinkFolderPicker(parsed.id);
+            return { kind: 'folder-picker' };
         }
 
         updateStatus('Đang đọc file công khai...', 'loading');
@@ -3577,7 +3735,8 @@
             fields: 'id,name,mimeType,createdTime,modifiedTime,webContentLink,thumbnailLink,iconLink,parents',
         });
         if (meta.mimeType === 'application/vnd.google-apps.folder') {
-            return importPublicDriveLink(`https://drive.google.com/drive/folders/${parsed.id}`);
+            await openLinkFolderPicker(parsed.id);
+            return { kind: 'folder-picker' };
         }
         if (!isImageFile(meta)) {
             throw new Error('Link không phải ảnh (JPG/PNG/WebP...).');
@@ -3589,24 +3748,242 @@
     async function handlePastedDriveLink(raw) {
         const parsed = parseDriveLink(raw);
         if (!parsed) return false;
+        if (parsed.type === 'folder') {
+            await openLinkFolderPicker(parsed.id);
+            return true;
+        }
         try {
             const result = await importPublicDriveLink(raw);
-            if (result.kind === 'folder') {
-                updateStatus(`Đã thêm ${result.count} ảnh từ folder công khai. Có thể tìm tên / AI / mặt.`, 'success');
-            } else {
+            if (result.kind === 'file') {
                 updateStatus(`Đã thêm “${result.file.name}” vào thư viện.`, 'success');
                 openImageModal(result.file);
             }
         } catch (err) {
-            if (parsed.type === 'folder' && currentAccessToken) {
-                updateStatus('Google không cho đọc folder bằng link. Đang mở đúng folder — chọn nhiều ảnh (Cmd/Ctrl + A).', 'loading');
-                await openDrivePicker({ parentId: parsed.id });
-                return true;
-            }
             updateStatus(err.message || 'Không đọc được link Drive. Folder của bạn hãy bấm Thêm từ Drive.', 'error');
         }
         return true;
     }
+
+    let linkPickState = { folderId: null, folderName: '', images: [], selected: new Set() };
+
+    function linkPickEls() {
+        return {
+            modal: document.getElementById('linkPickModal'),
+            title: document.getElementById('linkPickTitle'),
+            lead: document.getElementById('linkPickLead'),
+            loading: document.getElementById('linkPickLoading'),
+            fallback: document.getElementById('linkPickFallback'),
+            gridWrap: document.getElementById('linkPickGridWrap'),
+            grid: document.getElementById('linkPickGrid'),
+            actions: document.getElementById('linkPickActions'),
+            addBtn: document.getElementById('linkPickAddBtn'),
+            count: document.getElementById('linkPickCount'),
+        };
+    }
+
+    function closeLinkFolderPicker() {
+        const els = linkPickEls();
+        els.modal.classList.add('hidden');
+        linkPickState = { folderId: null, folderName: '', images: [], selected: new Set() };
+    }
+
+    async function rememberFolderMeta(folderId) {
+        folderMap.set(folderId, folderMap.get(folderId) || { name: 'Folder Drive', createdTime: null });
+        try {
+            const meta = await driveGetJson(`files/${folderId}`, { fields: 'id,name,createdTime' });
+            if (meta?.name) {
+                folderMap.set(folderId, { name: meta.name, createdTime: meta.createdTime || null });
+                return meta.name;
+            }
+        } catch (_) {}
+        return folderMap.get(folderId)?.name || 'Folder Drive';
+    }
+
+    async function loadFolderImagesForLink(folderId) {
+        const seen = new Map();
+        const add = (files) => {
+            (files || []).forEach((f) => { if (f?.id && isImageFile(f) && !seen.has(f.id)) seen.set(f.id, f); });
+        };
+        if (currentAccessToken) {
+            try { add(await listImagesInFolder(currentAccessToken, folderId, true)); } catch (_) {}
+        }
+        if (!seen.size) {
+            try { add(await listPublicFolderImages(folderId, true)); } catch (_) {}
+        }
+        return [...seen.values()];
+    }
+
+    function linkPickThumb(image) {
+        const driveThumb = `https://drive.google.com/thumbnail?id=${image.id}&sz=w240`;
+        try {
+            return getThumbnailUrl(image, 240) || driveThumb;
+        } catch (_) {
+            return image.thumbnailLink || driveThumb;
+        }
+    }
+
+    function renderLinkPickGrid() {
+        const els = linkPickEls();
+        const selected = linkPickState.selected;
+        els.grid.innerHTML = '';
+        linkPickState.images.forEach((image) => {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'link-pick-card' + (selected.has(image.id) ? ' selected' : '');
+            card.title = image.name || '';
+            const img = document.createElement('img');
+            img.alt = image.name || '';
+            img.loading = 'lazy';
+            img.src = linkPickThumb(image);
+            img.onerror = () => { img.src = `https://drive.google.com/thumbnail?id=${image.id}&sz=w240`; };
+            const check = document.createElement('span');
+            check.className = 'link-pick-check material-symbols-outlined';
+            check.textContent = 'check';
+            card.appendChild(img);
+            card.appendChild(check);
+            card.addEventListener('click', () => {
+                if (selected.has(image.id)) selected.delete(image.id);
+                else selected.add(image.id);
+                renderLinkPickGrid();
+            });
+            els.grid.appendChild(card);
+        });
+        const n = selected.size;
+        els.count.textContent = `${n}/${linkPickState.images.length} đã chọn`;
+        els.addBtn.disabled = n === 0;
+        els.addBtn.textContent = n ? `Thêm ${n} ảnh đã chọn` : 'Thêm ảnh đã chọn';
+    }
+
+    function showLinkPickPanel({ loading, fallback, grid }) {
+        const els = linkPickEls();
+        els.loading.classList.toggle('hidden', !loading);
+        els.fallback.classList.toggle('hidden', !fallback);
+        els.gridWrap.classList.toggle('hidden', !grid);
+        els.actions.style.display = grid ? 'flex' : 'none';
+    }
+
+    async function openLinkFolderPicker(folderId) {
+        const els = linkPickEls();
+        linkPickState = { folderId, folderName: 'Folder Drive', images: [], selected: new Set() };
+        els.modal.classList.remove('hidden');
+        els.title.textContent = 'Chọn ảnh từ folder';
+        els.lead.textContent = 'Đang đọc folder Drive...';
+        showLinkPickPanel({ loading: true, fallback: false, grid: false });
+        updateStatus('Đang đọc folder Drive...', 'loading');
+
+        const name = await rememberFolderMeta(folderId);
+        linkPickState.folderName = name;
+        els.title.textContent = name;
+
+        let images = [];
+        try {
+            images = await loadFolderImagesForLink(folderId);
+        } catch (_) {
+            images = [];
+        }
+        linkPickState.images = images;
+
+        if (images.length) {
+            images.forEach((img) => {
+                if (!img.parents || !img.parents.length) img.parents = [folderId];
+            });
+            els.lead.textContent = `${images.length} ảnh trong “${name}”. Tick từng tấm, chọn tất cả, hoặc thêm toàn bộ.`;
+            showLinkPickPanel({ loading: false, fallback: false, grid: true });
+            renderLinkPickGrid();
+            updateStatus(`Folder “${name}”: chọn nhiều ảnh hoặc chọn toàn bộ.`, 'success');
+            return;
+        }
+
+        els.lead.textContent = 'Google không cho đọc danh sách ảnh qua link. Chọn cách thêm vào thư viện:';
+        showLinkPickPanel({ loading: false, fallback: true, grid: false });
+        updateStatus('Folder cần chọn ảnh thủ công — chọn nhiều hoặc chọn toàn bộ bên dưới.', 'error');
+    }
+
+    async function addLinkPickSelection(images) {
+        if (!images.length) {
+            updateStatus('Chưa chọn ảnh nào.', 'error');
+            return;
+        }
+        const folderId = linkPickState.folderId;
+        if (folderId) {
+            images.forEach((img) => {
+                if (!img.parents || !img.parents.length) img.parents = [folderId];
+            });
+        }
+        closeLinkFolderPicker();
+        await addImagesToLibrary(images);
+    }
+
+    async function linkPickChooseMany() {
+        const folderId = linkPickState.folderId;
+        closeLinkFolderPicker();
+        if (!currentAccessToken) {
+            updateStatus('Đăng nhập rồi chọn nhiều ảnh trong folder.', 'error');
+            return;
+        }
+        updateStatus('Cửa sổ Drive: click nhiều ảnh hoặc Ctrl/Cmd+A rồi Select.', 'loading');
+        await openDrivePicker({
+            parentId: folderId,
+            imagesOnly: true,
+            navHidden: true,
+            title: 'Chọn nhiều ảnh — click từng tấm hoặc Ctrl/Cmd+A chọn hết',
+        });
+    }
+
+    async function linkPickChooseAll() {
+        const folderId = linkPickState.folderId;
+        const listed = linkPickState.images;
+        if (listed.length) {
+            await addLinkPickSelection(listed);
+            return;
+        }
+        closeLinkFolderPicker();
+        if (!currentAccessToken) {
+            updateStatus('Đăng nhập rồi chọn toàn bộ ảnh trong folder.', 'error');
+            return;
+        }
+        updateStatus('Đang thêm toàn bộ ảnh folder...', 'loading');
+        let kids = [];
+        try { kids = await listImagesInFolder(currentAccessToken, folderId, true); } catch (_) {}
+        if (!kids.length) {
+            try { kids = await listPublicFolderImages(folderId, true); } catch (_) {}
+        }
+        if (kids.length) {
+            kids.forEach((img) => {
+                if (!img.parents || !img.parents.length) img.parents = [folderId];
+            });
+            await addImagesToLibrary(kids);
+            return;
+        }
+        updateStatus('Không đọc được list. Cửa sổ Drive: bấm Ctrl/Cmd+A để chọn hết, rồi Select.', 'loading');
+        await openDrivePicker({
+            parentId: folderId,
+            imagesOnly: true,
+            navHidden: true,
+            title: 'Chọn toàn bộ: Ctrl/Cmd+A rồi bấm Select',
+        });
+    }
+
+    document.getElementById('linkPickCloseBtn').addEventListener('click', closeLinkFolderPicker);
+    document.getElementById('linkPickCancelBtn').addEventListener('click', closeLinkFolderPicker);
+    document.getElementById('linkPickManyBtn').addEventListener('click', () => { linkPickChooseMany(); });
+    document.getElementById('linkPickAllBtn').addEventListener('click', () => { linkPickChooseAll(); });
+    document.getElementById('linkPickSelectAllBtn').addEventListener('click', () => {
+        linkPickState.selected = new Set(linkPickState.images.map((img) => img.id));
+        renderLinkPickGrid();
+    });
+    document.getElementById('linkPickSelectNoneBtn').addEventListener('click', () => {
+        linkPickState.selected = new Set();
+        renderLinkPickGrid();
+    });
+    document.getElementById('linkPickAddAllBtn').addEventListener('click', () => { linkPickChooseAll(); });
+    document.getElementById('linkPickAddBtn').addEventListener('click', async () => {
+        const chosen = linkPickState.images.filter((img) => linkPickState.selected.has(img.id));
+        await addLinkPickSelection(chosen);
+    });
+    document.getElementById('linkPickModal').addEventListener('click', (e) => {
+        if (e.target.id === 'linkPickModal') closeLinkFolderPicker();
+    });
 
     document.getElementById('linkPasteForm').addEventListener('submit', async (e) => {
         e.preventDefault();
