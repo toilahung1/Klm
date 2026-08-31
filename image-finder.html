@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-    <meta name="app-version" content="2.3.7-link-multiselect"/>
+    <meta name="app-version" content="2.3.8-folder-full-list"/>
     <title>Klooker Media Image Finder</title>
     <meta name="application-name" content="Klooker Media Image Finder"/>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -1655,7 +1655,7 @@
     const GOOGLE_API_KEY = 'AIzaSyDnjdN92IRnso3eWRXn_uiu2_qyi97cKeA';
     const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
     const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email openid profile';
-    const APP_VERSION = '2.3.7-link-multiselect';
+    const APP_VERSION = '2.3.8-folder-full-list';
     const PICKER_IMAGE_MIMES = 'image/png,image/jpeg,image/jpg,image/gif,image/webp,image/bmp,image/tiff,image/heic,image/heif';
     const AI_PROXY_URL = 'https://gemini-proxy-two-mu.vercel.app/api/gemini';
     const STOP_WORDS = new Set(['tim', 'anh', 'image', 'photo', 'theo', 'trong', 'giup', 'cho', 'tooi', 'can']);
@@ -2005,16 +2005,26 @@
 
         for (const folder of folders) {
             folderMap.set(folder.id, { name: folder.name || 'Thư mục', createdTime: null });
-            const kids = await listImagesInFolder(currentAccessToken, folder.id, true);
-            if (kids.length) {
+            let kids = [];
+            let complete = false;
+            try {
+                kids = await listPublicFolderImages(folder.id, true);
+                complete = true;
+            } catch (_) {}
+            if (complete) {
                 collected.push(...kids);
-            } else {
-                showToast('Google chỉ cho đọc ảnh bạn chọn. Vào folder rồi Ctrl/Cmd + A.');
-                updateStatus('Mở folder rồi chọn nhiều ảnh (Ctrl/Cmd + A).', 'loading');
-                window.setTimeout(() => openDrivePicker({ parentId: folder.id }), 300);
-                if (collected.length) await addImagesToLibrary(collected);
-                return;
+                continue;
             }
+            showToast('Google chỉ cho đọc ảnh bạn chọn. Trong cửa sổ Drive: Ctrl/Cmd + A rồi Select.');
+            updateStatus('Mở folder rồi chọn nhiều ảnh (Ctrl/Cmd + A chọn hết).', 'loading');
+            window.setTimeout(() => openDrivePicker({
+                parentId: folder.id,
+                imagesOnly: true,
+                navHidden: true,
+                title: 'Chọn toàn bộ: Ctrl/Cmd+A rồi bấm Select',
+            }), 300);
+            if (collected.length) await addImagesToLibrary(collected);
+            return;
         }
 
         if (!collected.length) {
@@ -3664,10 +3674,11 @@
         return url.toString();
     }
 
-    async function driveGetJson(path, params = {}) {
+    async function driveGetJson(path, params = {}, options = {}) {
+        const useOAuth = options.useOAuth !== false;
         const url = driveV3Url(path, params);
         const tries = [];
-        if (currentAccessToken) tries.push({ headers: { Authorization: `Bearer ${currentAccessToken}` } });
+        if (useOAuth && currentAccessToken) tries.push({ headers: { Authorization: `Bearer ${currentAccessToken}` } });
         tries.push({ headers: {} });
         let lastRes = null;
         for (const opt of tries) {
@@ -3680,6 +3691,10 @@
         const err = new Error(data?.error?.message || 'Không đọc được link Drive.');
         err.status = lastRes?.status;
         throw err;
+    }
+
+    async function driveGetPublicJson(path, params = {}) {
+        return driveGetJson(path, params, { useOAuth: false });
     }
 
     async function driveGetBlob(fileId) {
@@ -3705,7 +3720,7 @@
                 fields: 'nextPageToken,files(id,name,mimeType,createdTime,modifiedTime,webContentLink,thumbnailLink,iconLink,parents)',
             };
             if (pageToken) params.pageToken = pageToken;
-            const data = await driveGetJson('files', params);
+            const data = await driveGetPublicJson('files', params);
             (data.files || []).forEach((file) => {
                 if (file.mimeType === 'application/vnd.google-apps.folder') subfolders.push(file);
                 else if (isImageFile(file)) images.push(file);
@@ -3764,7 +3779,7 @@
         return true;
     }
 
-    let linkPickState = { folderId: null, folderName: '', images: [], selected: new Set() };
+    let linkPickState = { folderId: null, folderName: '', images: [], selected: new Set(), complete: false };
 
     function linkPickEls() {
         return {
@@ -3784,7 +3799,7 @@
     function closeLinkFolderPicker() {
         const els = linkPickEls();
         els.modal.classList.add('hidden');
-        linkPickState = { folderId: null, folderName: '', images: [], selected: new Set() };
+        linkPickState = { folderId: null, folderName: '', images: [], selected: new Set(), complete: false };
     }
 
     async function rememberFolderMeta(folderId) {
@@ -3804,13 +3819,13 @@
         const add = (files) => {
             (files || []).forEach((f) => { if (f?.id && isImageFile(f) && !seen.has(f.id)) seen.set(f.id, f); });
         };
-        if (currentAccessToken) {
-            try { add(await listImagesInFolder(currentAccessToken, folderId, true)); } catch (_) {}
-        }
-        if (!seen.size) {
-            try { add(await listPublicFolderImages(folderId, true)); } catch (_) {}
-        }
-        return [...seen.values()];
+        let complete = false;
+        try {
+            const publicFiles = await listPublicFolderImages(folderId, true);
+            add(publicFiles);
+            complete = true;
+        } catch (_) {}
+        return { images: [...seen.values()], complete };
     }
 
     function linkPickThumb(image) {
@@ -3864,7 +3879,7 @@
 
     async function openLinkFolderPicker(folderId) {
         const els = linkPickEls();
-        linkPickState = { folderId, folderName: 'Folder Drive', images: [], selected: new Set() };
+        linkPickState = { folderId, folderName: 'Folder Drive', images: [], selected: new Set(), complete: false };
         els.modal.classList.remove('hidden');
         els.title.textContent = 'Chọn ảnh từ folder';
         els.lead.textContent = 'Đang đọc folder Drive...';
@@ -3876,27 +3891,39 @@
         els.title.textContent = name;
 
         let images = [];
+        let complete = false;
         try {
-            images = await loadFolderImagesForLink(folderId);
+            const listed = await loadFolderImagesForLink(folderId);
+            images = listed.images;
+            complete = listed.complete;
         } catch (_) {
             images = [];
+            complete = false;
         }
         linkPickState.images = images;
+        linkPickState.complete = complete;
 
-        if (images.length) {
+        if (complete && images.length) {
             images.forEach((img) => {
                 if (!img.parents || !img.parents.length) img.parents = [folderId];
             });
             els.lead.textContent = `${images.length} ảnh trong “${name}”. Tick từng tấm, chọn tất cả, hoặc thêm toàn bộ.`;
             showLinkPickPanel({ loading: false, fallback: false, grid: true });
             renderLinkPickGrid();
-            updateStatus(`Folder “${name}”: chọn nhiều ảnh hoặc chọn toàn bộ.`, 'success');
+            updateStatus(`Folder “${name}”: ${images.length} ảnh — chọn nhiều hoặc chọn toàn bộ.`, 'success');
             return;
         }
 
-        els.lead.textContent = 'Google không cho đọc danh sách ảnh qua link. Chọn cách thêm vào thư viện:';
+        if (complete && !images.length) {
+            els.lead.textContent = `Folder “${name}” không có ảnh, hoặc chưa để Anyone with the link.`;
+            showLinkPickPanel({ loading: false, fallback: true, grid: false });
+            updateStatus('Folder trống trên API công khai. Có thể chọn nhiều / chọn toàn bộ bằng cửa sổ Drive.', 'error');
+            return;
+        }
+
+        els.lead.textContent = 'Google chỉ trả ảnh đã mở trước đó, không phải cả folder. Chọn nhiều hoặc chọn toàn bộ trong cửa sổ Drive.';
         showLinkPickPanel({ loading: false, fallback: true, grid: false });
-        updateStatus('Folder cần chọn ảnh thủ công — chọn nhiều hoặc chọn toàn bộ bên dưới.', 'error');
+        updateStatus('Folder cần chọn trong Drive — chọn nhiều ảnh hoặc Ctrl/Cmd+A chọn hết.', 'error');
     }
 
     async function addLinkPickSelection(images) {
@@ -3933,7 +3960,7 @@
     async function linkPickChooseAll() {
         const folderId = linkPickState.folderId;
         const listed = linkPickState.images;
-        if (listed.length) {
+        if (linkPickState.complete && listed.length) {
             await addLinkPickSelection(listed);
             return;
         }
@@ -3942,20 +3969,20 @@
             updateStatus('Đăng nhập rồi chọn toàn bộ ảnh trong folder.', 'error');
             return;
         }
-        updateStatus('Đang thêm toàn bộ ảnh folder...', 'loading');
         let kids = [];
-        try { kids = await listImagesInFolder(currentAccessToken, folderId, true); } catch (_) {}
-        if (!kids.length) {
-            try { kids = await listPublicFolderImages(folderId, true); } catch (_) {}
-        }
-        if (kids.length) {
+        let complete = false;
+        try {
+            kids = await listPublicFolderImages(folderId, true);
+            complete = true;
+        } catch (_) {}
+        if (complete && kids.length) {
             kids.forEach((img) => {
                 if (!img.parents || !img.parents.length) img.parents = [folderId];
             });
             await addImagesToLibrary(kids);
             return;
         }
-        updateStatus('Không đọc được list. Cửa sổ Drive: bấm Ctrl/Cmd+A để chọn hết, rồi Select.', 'loading');
+        updateStatus('Cửa sổ Drive: bấm Ctrl/Cmd+A để chọn hết ảnh, rồi Select.', 'loading');
         await openDrivePicker({
             parentId: folderId,
             imagesOnly: true,
