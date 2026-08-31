@@ -96,6 +96,7 @@
         body { 
             font-family: 'Inter', sans-serif;
             scroll-behavior: smooth;
+            overflow-x: hidden;
         }
         
         h1, h2, h3, .brand-font { font-family: 'Manrope', sans-serif; }
@@ -303,13 +304,135 @@
         .animate-marquee2 {
             animation: marquee 80s linear infinite;
         }
+
+        html { scroll-padding-top: 76px; }
+        .nav-toggle {
+            display: none;
+            width: 44px; height: 44px;
+            align-items: center; justify-content: center;
+            border: none; background: transparent; border-radius: 12px;
+            color: #004ac6; cursor: pointer; flex-shrink: 0;
+        }
+        .nav-toggle .material-symbols-outlined { font-size: 28px; }
+        .nav-drawer {
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            padding: 8px 16px 20px;
+            background: #fff;
+            border-top: 1px solid #e8eaef;
+        }
+        .nav-drawer a {
+            display: block;
+            padding: 12px 14px;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 650;
+            font-size: 15px;
+            color: #1a1c23;
+            border-radius: 12px;
+        }
+        .nav-drawer a:active, .nav-drawer a:hover { background: #eef3ff; color: #004ac6; }
+        .nav-drawer .nav-drawer-cta {
+            margin-top: 6px;
+            text-align: center;
+            background: #004ac6;
+            color: #fff !important;
+        }
+        .nav-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            top: 56px;
+            background: rgba(15, 23, 42, 0.4);
+            z-index: 40;
+        }
+        body.nav-open { overflow: hidden; }
+        body.nav-open .nav-drawer { display: flex; }
+        body.nav-open .nav-backdrop { display: block; }
+
+        @media (max-width: 767px) {
+            .nav-toggle { display: flex; }
+            .site-nav-inner {
+                padding: 8px 16px !important;
+            }
+            .nav-logo {
+                font-size: 15px !important;
+                max-width: calc(100% - 52px);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            header.hero-section {
+                min-height: 0 !important;
+                padding: 88px 0 40px !important;
+            }
+            header.hero-section .max-w-7xl {
+                padding-left: 16px !important;
+                padding-right: 16px !important;
+                gap: 28px !important;
+            }
+            header.hero-section h1 {
+                font-size: 1.85rem !important;
+                line-height: 1.2 !important;
+                margin-bottom: 12px !important;
+            }
+            header.hero-section .hero-sub {
+                font-size: 1.15rem !important;
+                margin-bottom: 12px !important;
+            }
+            header.hero-section .hero-lead {
+                font-size: 0.95rem !important;
+                margin-bottom: 20px !important;
+            }
+            .hero-actions {
+                flex-direction: column;
+                width: 100%;
+                gap: 10px;
+            }
+            .hero-actions a {
+                width: 100%;
+                text-align: center;
+                padding: 14px 18px !important;
+                font-size: 15px !important;
+                white-space: nowrap;
+                box-sizing: border-box;
+            }
+            .hero-photo {
+                aspect-ratio: 4 / 3 !important;
+                max-height: 280px;
+            }
+            .blob { width: 220px !important; height: 220px !important; filter: blur(60px); }
+            section[class*="py-32"] {
+                padding-top: 3.25rem !important;
+                padding-bottom: 3.25rem !important;
+            }
+            section[class*="py-24"],
+            section[class*="py-16"] {
+                padding-top: 2.5rem !important;
+                padding-bottom: 2.5rem !important;
+            }
+            section .max-w-7xl,
+            footer .max-w-7xl {
+                padding-left: 16px !important;
+                padding-right: 16px !important;
+            }
+            .text-5xl { font-size: 1.85rem !important; }
+            .text-4xl { font-size: 1.55rem !important; }
+            .social-fabs {
+                bottom: 16px !important;
+                right: 12px !important;
+            }
+        }
     </style>
 </head>
 <body class="bg-background text-on-surface">
 <!-- TopNavBar -->
 <nav class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl shadow-sm shadow-blue-900/5">
-<div class="max-w-7xl mx-auto px-8 py-4 flex justify-between items-center">
-<span class="text-xl font-bold tracking-tighter text-primary">Klooker Media Image Finder</span>
+<div class="max-w-7xl mx-auto px-8 py-4 flex justify-between items-center site-nav-inner">
+<a href="index.html" class="nav-logo text-xl font-bold tracking-tighter text-primary">KLOOKER MEDIA</a>
+<button type="button" class="nav-toggle" id="navToggle" aria-label="Mở menu" aria-expanded="false">
+    <span class="material-symbols-outlined">menu</span>
+</button>
 <div class="hidden md:flex gap-8 items-center">
 <a class="text-slate-600 hover:text-primary font-['Manrope'] font-medium text-sm tracking-tight transition-all duration-300" href="#dich-vu">Dịch Vụ</a>
 <a class="text-slate-600 hover:text-primary font-['Manrope'] font-medium text-sm tracking-tight transition-all duration-300" href="#quy-trinh">Quy Trình</a>
@@ -319,9 +442,20 @@
 <a class="bg-primary text-on-primary px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-transform scale-95 active:scale-90" href="#tu-van">Liên Hệ Ngay</a>
 </div>
 </div>
+<div class="nav-drawer" id="navDrawer">
+    <a href="#dich-vu">Dịch Vụ</a>
+    <a href="#quy-trinh">Quy Trình</a>
+    <a href="#du-an">Dự Án</a>
+    <a href="image-finder.html">Image Finder</a>
+    <a href="#tu-van">Tư Vấn</a>
+    <a href="privacy.html">Bảo mật</a>
+    <a href="terms.html">Điều khoản</a>
+    <a class="nav-drawer-cta" href="#tu-van">Liên hệ ngay</a>
+</div>
 </nav>
+<div class="nav-backdrop" id="navBackdrop"></div>
 <!-- Section 1: Hero -->
-<header class="relative min-h-screen flex items-center pt-24 pb-20 overflow-hidden bg-surface-bright">
+<header class="relative min-h-screen flex items-center pt-24 pb-20 overflow-hidden bg-surface-bright hero-section">
     <div class="blob -top-24 -left-24"></div>
     <div class="blob bottom-0 right-0" style="animation-delay: -5s;"></div>
     <div class="max-w-7xl mx-auto px-8 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
@@ -330,19 +464,19 @@
             <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1] text-on-surface">
                 Klooker Media Image Finder
             </h1>
-            <p class="text-2xl md:text-3xl font-bold tracking-tight mb-6 text-on-surface">
+            <p class="hero-sub text-2xl md:text-3xl font-bold tracking-tight mb-6 text-on-surface">
                 Kiến Tạo Giải Pháp <span class="text-gradient">Truyền Thông</span> Đột Phá
             </p>
-            <p class="text-lg text-on-surface-variant leading-relaxed mb-10 max-w-lg">
+            <p class="hero-lead text-lg text-on-surface-variant leading-relaxed mb-10 max-w-lg">
                 Chúng tôi kể câu chuyện thương hiệu của bạn bằng ngôn ngữ hình ảnh sáng tạo và chiến lược truyền thông đa nền tảng hiện đại nhất.
             </p>
-            <div class="flex gap-4">
+            <div class="hero-actions flex gap-4">
                 <a class="hero-gradient shimmer-btn text-on-primary px-10 py-4 rounded-full font-bold text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-transform" href="#tu-van">Nhận tư vấn</a>
                 <a class="bg-surface-container-lowest text-primary px-10 py-4 rounded-full font-bold text-lg hover:bg-surface-container-low transition-colors border border-primary/20" href="#du-an">Xem dự án</a>
             </div>
         </div>
         <div class="relative reveal" style="transition-delay: 0.2s;">
-            <div class="rounded-lg overflow-hidden aspect-[4/5] shadow-2xl relative z-10 floating">
+            <div class="hero-photo rounded-lg overflow-hidden aspect-[4/5] shadow-2xl relative z-10 floating">
                 <img alt="Professional digital media production team" class="w-full h-full object-cover" src="hero.jpg"/>
             </div>
             <div class="absolute -bottom-10 -left-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl -z-0"></div>
@@ -1040,6 +1174,7 @@ Mở Klooker Media Image Finder
 <div>
 <h5 class="font-bold mb-6">Liên Kết Nhanh</h5>
 <ul class="space-y-4">
+<li><a class="text-slate-500 hover:text-primary transition-colors" href="image-finder.html">Image Finder</a></li>
 <li><a class="text-slate-500 hover:text-primary transition-colors" href="#dich-vu">Dịch Vụ</a></li>
 <li><a class="text-slate-500 hover:text-primary transition-colors" href="#du-an">Dự Án Tiêu Biểu</a></li>
 <li><a class="text-slate-500 hover:text-primary transition-colors" href="#quy-trinh">Quy Trình</a></li>
@@ -1234,9 +1369,29 @@ Mở Klooker Media Image Finder
                 observer.observe(el);
             }
         });
+
+        function setNavOpen(open) {
+            document.body.classList.toggle('nav-open', open);
+            const toggle = document.getElementById('navToggle');
+            if (!toggle) return;
+            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            toggle.setAttribute('aria-label', open ? 'Đóng menu' : 'Mở menu');
+            const icon = toggle.querySelector('.material-symbols-outlined');
+            if (icon) icon.textContent = open ? 'close' : 'menu';
+        }
+        document.getElementById('navToggle')?.addEventListener('click', () => {
+            setNavOpen(!document.body.classList.contains('nav-open'));
+        });
+        document.getElementById('navBackdrop')?.addEventListener('click', () => setNavOpen(false));
+        document.querySelectorAll('#navDrawer a').forEach((a) => {
+            a.addEventListener('click', () => setNavOpen(false));
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') setNavOpen(false);
+        });
     </script>
     <!-- Floating Social Buttons (Positioned above Pancake) -->
-    <div class="fixed bottom-24 right-6 z-[100] flex flex-col gap-3 items-end">
+    <div class="social-fabs fixed bottom-24 right-6 z-[100] flex flex-col gap-3 items-end">
         <a class="flex items-center justify-center w-12 h-12 bg-[#0068ff] text-white rounded-full shadow-lg hover:scale-110 transition-transform group relative" href="https://zalo.me/0934999392" target="_blank">
             <span class="absolute right-full mr-3 bg-white text-[#0068ff] px-3 py-1.5 rounded-lg text-sm font-bold shadow-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">Zalo: 0934999392</span>
             <span class="material-symbols-outlined text-2xl">chat</span>

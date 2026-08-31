@@ -263,6 +263,62 @@
             .share-dialog { padding: 20px; }
         }
 
+        html { scroll-padding-top: 72px; }
+        .nav-toggle {
+            display: none;
+            width: 44px; height: 44px;
+            align-items: center; justify-content: center;
+            border: none; background: transparent; border-radius: 12px;
+            color: #004ac6; cursor: pointer; flex-shrink: 0;
+        }
+        .nav-toggle .material-symbols-outlined { font-size: 28px; }
+        .nav-drawer {
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            padding: 8px 16px 20px;
+            background: #fff;
+            border-top: 1px solid #e8eaef;
+        }
+        .nav-drawer a {
+            display: block;
+            padding: 12px 14px;
+            font-family: 'Manrope', sans-serif;
+            font-weight: 650;
+            font-size: 15px;
+            color: #1a1c23;
+            border-radius: 12px;
+        }
+        .nav-drawer a:active, .nav-drawer a:hover { background: #eef3ff; color: #004ac6; }
+        .nav-drawer .nav-drawer-cta {
+            margin-top: 6px;
+            text-align: center;
+            background: #004ac6;
+            color: #fff !important;
+        }
+        .nav-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            top: 56px;
+            background: rgba(15, 23, 42, 0.4);
+            z-index: 70;
+        }
+        body.nav-open { overflow: hidden; }
+        body.nav-open .nav-drawer { display: flex; }
+        body.nav-open .nav-backdrop { display: block; }
+        @media (max-width: 767px) {
+            .nav-toggle { display: flex; }
+            .site-nav-inner { padding: 8px 16px !important; }
+            .nav-logo {
+                font-size: 15px !important;
+                max-width: calc(100% - 52px);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+        }
+
         .chat-messages {
             display: none;
         }
@@ -1277,19 +1333,34 @@
 </head>
 <body class="bg-background text-on-surface">
 <!-- TopNavBar -->
-<nav class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl shadow-sm shadow-blue-900/5">
-    <div class="max-w-7xl mx-auto px-8 py-4 flex justify-between items-center">
-        <a href="index.html" class="text-xl font-bold tracking-tighter text-primary">KLOOKER MEDIA</a>
+<nav class="fixed top-0 w-full z-[80] bg-white/80 backdrop-blur-xl shadow-sm shadow-blue-900/5">
+    <div class="max-w-7xl mx-auto px-8 py-4 flex justify-between items-center site-nav-inner">
+        <a href="index.html" class="nav-logo text-xl font-bold tracking-tighter text-primary">KLOOKER MEDIA</a>
+        <button type="button" class="nav-toggle" id="navToggle" aria-label="Mở menu" aria-expanded="false">
+            <span class="material-symbols-outlined">menu</span>
+        </button>
         <div class="hidden md:flex gap-8 items-center">
             <a class="text-slate-600 hover:text-primary font-['Manrope'] font-medium text-sm tracking-tight transition-all duration-300" href="index.html#dich-vu">Dịch Vụ</a>
             <a class="text-slate-600 hover:text-primary font-['Manrope'] font-medium text-sm tracking-tight transition-all duration-300" href="index.html#quy-trinh">Quy Trình</a>
             <a class="text-slate-600 hover:text-primary font-['Manrope'] font-medium text-sm tracking-tight transition-all duration-300" href="index.html#du-an">Dự Án</a>
-            <a class="text-primary font-['Manrope'] font-bold text-sm tracking-tight transition-all duration-300">Image Finder</a>
+            <a class="text-primary font-['Manrope'] font-bold text-sm tracking-tight transition-all duration-300" href="image-finder.html">Image Finder</a>
             <a class="text-slate-600 hover:text-primary font-['Manrope'] font-medium text-sm tracking-tight transition-all duration-300" href="index.html#tu-van">Tư Vấn</a>
             <a class="bg-primary text-on-primary px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition-transform scale-95 active:scale-90" href="index.html#tu-van">Liên Hệ Ngay</a>
         </div>
     </div>
+    <div class="nav-drawer" id="navDrawer">
+        <a href="index.html">Trang chủ</a>
+        <a href="index.html#dich-vu">Dịch Vụ</a>
+        <a href="index.html#quy-trinh">Quy Trình</a>
+        <a href="index.html#du-an">Dự Án</a>
+        <a href="image-finder.html">Image Finder</a>
+        <a href="index.html#tu-van">Tư Vấn</a>
+        <a href="privacy.html">Bảo mật</a>
+        <a href="terms.html">Điều khoản</a>
+        <a class="nav-drawer-cta" href="index.html#tu-van">Liên hệ ngay</a>
+    </div>
 </nav>
+<div class="nav-backdrop" id="navBackdrop"></div>
 
 <!-- Login Screen -->
 <div id="loginScreen" class="login-screen">
@@ -4352,6 +4423,26 @@
     }
 
     window.addEventListener('load', initializeApp);
+
+    function setNavOpen(open) {
+        document.body.classList.toggle('nav-open', open);
+        const toggle = document.getElementById('navToggle');
+        if (!toggle) return;
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        toggle.setAttribute('aria-label', open ? 'Đóng menu' : 'Mở menu');
+        const icon = toggle.querySelector('.material-symbols-outlined');
+        if (icon) icon.textContent = open ? 'close' : 'menu';
+    }
+    document.getElementById('navToggle')?.addEventListener('click', () => {
+        setNavOpen(!document.body.classList.contains('nav-open'));
+    });
+    document.getElementById('navBackdrop')?.addEventListener('click', () => setNavOpen(false));
+    document.querySelectorAll('#navDrawer a').forEach((a) => {
+        a.addEventListener('click', () => setNavOpen(false));
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.body.classList.contains('nav-open')) setNavOpen(false);
+    });
 </script>
 
 </body>
