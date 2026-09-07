@@ -35,39 +35,33 @@
     <div class="top">
       <div>
         <h1>Klooker Media — Team</h1>
-        <p class="sub">Tải source Image Finder và mở công cụ tìm ảnh / tìm mặt. Folder shoot mẫu trên Drive (Worldcup Pickleball Celeb &amp; KOL) dùng khi đã đăng nhập Gmail trong app.</p>
+        <p class="sub">Source ảnh = folder Drive <b>Klooker VN Source</b>. Pass cấu hình trong tệp <code>7/9</code>.</p>
       </div>
       <button type="button" class="logout" id="btnLogout">Đăng xuất</button>
     </div>
 
     <div class="card">
-      <h2>1. Tải source</h2>
-      <p>Gói HTML + Image Finder + gemini-proxy (không gồm node_modules). Giải nén rồi mở <code>image-finder.html</code> hoặc deploy như site hiện tại.</p>
-      <a class="btn" href="downloads/klooker-media-image-finder-source.zip" download>Tải source (.zip)</a>
-    </div>
-
-    <div class="card">
-      <h2>2. Image Finder — tìm ảnh &amp; tìm mặt</h2>
-      <p>Đăng nhập Gmail → Thêm từ Drive (folder shoot) → AI học → tìm theo mô tả hoặc mở folder để tìm mặt.</p>
+      <h2>Klooker VN Source</h2>
+      <p>Folder Drive Worldcup Pickleball Celeb &amp; KOL — mở Image Finder, đăng nhập Gmail, rồi bấm <b>Thêm vào thư viện</b> trong mục Klooker VN Source.</p>
       <div class="row">
         <a class="btn" href="image-finder.html">Mở Image Finder</a>
-        <a class="btn secondary" href="https://drive.google.com/drive/folders/1dQj5flRmRNF1Hj_6KyCz131MYhsONFie" target="_blank" rel="noopener">Mở folder Drive mẫu</a>
+        <a class="btn secondary" href="https://drive.google.com/drive/folders/1dQj5flRmRNF1Hj_6KyCz131MYhsONFie" target="_blank" rel="noopener">Mở folder Drive</a>
       </div>
     </div>
 
     <div class="card">
-      <h2>3. Cách tìm mặt nhanh</h2>
+      <h2>Cách tìm mặt</h2>
       <ol class="steps">
-        <li>Trong Image Finder: đăng nhập Gmail → <b>Thêm từ Drive</b> → chọn folder shoot (Ctrl/Cmd+A).</li>
-        <li>Đợi AI học nền (thanh dưới).</li>
-        <li>Mở folder trong thư viện → nút <b>Tìm mặt</b> → upload ảnh chân dung hoặc dán link Drive công khai.</li>
-        <li>App so mặt với từng ảnh (kể cả ảnh nhóm).</li>
+        <li>Vào Image Finder → nhập mật khẩu team (tệp <code>7/9</code>).</li>
+        <li>Đăng nhập Gmail.</li>
+        <li>Trong mục <b>Klooker VN Source</b> bấm <b>Thêm vào thư viện</b>.</li>
+        <li>Chọn ảnh / thêm toàn bộ folder → mở folder → <b>Tìm mặt</b>.</li>
       </ol>
     </div>
   </div>
   <script>
     KlookerGate.showGate({
-      message: 'Nhập mật khẩu team để tải source và dùng Image Finder / tìm mặt.'
+      message: 'Nhập mật khẩu team (cấu hình trong tệp 7/9) để vào portal.'
     }).then(function () {
       document.getElementById('app').hidden = false;
     });

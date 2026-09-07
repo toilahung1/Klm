@@ -1,11 +1,10 @@
 /**
- * Klooker team gate — password shared for source download + Image Finder.
- * Not bank-grade; stops casual public access.
+ * Klooker team gate — password loaded from file 7/9
  */
 (function (global) {
-  var SALT = 'klooker-media-vn-2026';
-  var HASH = '233b47256d41d9a8006dd9288992531c20d5ab98fafbf5af7460ebaeea942fac';
   var KEY = 'klooker_team_ok_v1';
+  var CFG_URL = '7/9';
+  var cachedCfg = null;
 
   function sha256Hex(str) {
     if (global.crypto && crypto.subtle) {
@@ -18,21 +17,34 @@
     return Promise.reject(new Error('Crypto unavailable'));
   }
 
+  function loadCfg() {
+    if (cachedCfg) return Promise.resolve(cachedCfg);
+    return fetch(CFG_URL + '?_=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('Không đọc được file mật khẩu 7/9');
+        return r.json();
+      })
+      .then(function (cfg) {
+        cachedCfg = cfg;
+        return cfg;
+      });
+  }
+
   function isAuthed() {
     try { return sessionStorage.getItem(KEY) === '1'; } catch (e) { return false; }
   }
-
   function setAuthed() {
     try { sessionStorage.setItem(KEY, '1'); } catch (e) {}
   }
-
   function clearAuthed() {
     try { sessionStorage.removeItem(KEY); } catch (e) {}
   }
 
   function checkPassword(pw) {
-    return sha256Hex(SALT + String(pw || '')).then(function (h) {
-      return h === HASH;
+    return loadCfg().then(function (cfg) {
+      return sha256Hex(String(cfg.salt || '') + String(pw || '')).then(function (h) {
+        return h === String(cfg.hash || '');
+      });
     });
   }
 
@@ -71,12 +83,12 @@
       wrap.innerHTML = [
         '<div class="box" role="dialog" aria-modal="true" aria-labelledby="klooker-gate-title">',
         '<h1 id="klooker-gate-title">Klooker Media — Team</h1>',
-        '<p>' + (opts.message || 'Nhập mật khẩu team để dùng Image Finder / tải source.') + '</p>',
+        '<p>' + (opts.message || 'Nhập mật khẩu team (cấu hình trong tệp 7/9).') + '</p>',
         '<label for="klooker-gate-pw">Mật khẩu</label>',
         '<input id="klooker-gate-pw" type="password" autocomplete="current-password" placeholder="••••••••"/>',
         '<p class="err" id="klooker-gate-err"></p>',
         '<button type="button" id="klooker-gate-btn">Vào</button>',
-        '<p class="hint">Phiên đăng nhập giữ đến khi đóng tab trình duyệt.</p>',
+        '<p class="hint">Phiên giữ đến khi đóng tab. Pass cấu hình theo tệp <code>7/9</code>.</p>',
         '</div>'
       ].join('');
       document.body.appendChild(wrap);
@@ -98,9 +110,9 @@
           wrap.remove();
           if (typeof opts.onOk === 'function') opts.onOk();
           resolve(true);
-        }).catch(function () {
+        }).catch(function (e) {
           btn.disabled = false;
-          fail('Trình duyệt không hỗ trợ mã hóa. Thử Chrome/Safari mới.');
+          fail((e && e.message) || 'Không kiểm tra được mật khẩu.');
         });
       }
       btn.addEventListener('click', tryLogin);
@@ -117,5 +129,6 @@
     clearAuthed: clearAuthed,
     checkPassword: checkPassword,
     showGate: showGate,
+    loadCfg: loadCfg,
   };
 })(window);

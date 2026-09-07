@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-    <meta name="app-version" content="2.3.11-source-ui"/>
+    <meta name="app-version" content="2.3.12-kvn-source"/>
     <title>Klooker Media Image Finder</title>
     <meta name="application-name" content="Klooker Media Image Finder"/>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -680,6 +680,40 @@
             box-shadow: 0 4px 14px rgba(13,148,136,.28);
         }
         .source-dl-btn:hover { background: #0f766e; color: #fff; }
+        .kvn-source-panel {
+            margin: 0 0 16px;
+            padding: 16px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #eff6ff, #ecfeff);
+            border: 1.5px solid #bfdbfe;
+        }
+        .kvn-source-kicker {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            color: #004ac6;
+            background: #dbeafe;
+            padding: 3px 8px;
+            border-radius: 999px;
+            margin-bottom: 6px;
+        }
+        .kvn-source-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .kvn-source-head strong { display: block; font-size: 15px; color: #0f172a; margin-bottom: 4px; }
+        .kvn-source-head p { margin: 0; font-size: 12.5px; color: #475569; line-height: 1.45; max-width: 520px; }
+        .kvn-source-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+        .kvn-source-meta {
+            display: flex; align-items: center; gap: 6px;
+            margin-top: 12px; font-size: 12px; color: #64748b;
+            word-break: break-all;
+        }
         .source-banner {
             display: flex;
             align-items: center;
@@ -1417,12 +1451,6 @@
             </div>
             <div class="space-y-4">
                 <div id="googleLoginButton" class="flex justify-center"></div>
-                <div class="flex justify-center mt-4">
-                    <a class="source-dl-btn" href="downloads/klooker-media-image-finder-source.zip" download>
-                        <span class="material-symbols-outlined" style="font-size:18px;">folder_zip</span>
-                        Tải source (.zip)
-                    </a>
-                </div>
                 <p class="text-center text-sm text-on-surface-variant" id="loadingStatus">Đang tải cấu hình...</p>
                 <p class="text-center text-xs text-on-surface-variant">
                     Đăng nhập Gmail → chọn folder/ảnh từ Drive → AI học tập đó để tìm theo mô tả, mặt, ngày
@@ -1546,10 +1574,6 @@
             <p class="text-sm text-on-surface-variant truncate" id="userEmail"></p>
         </div>
         <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-            <a class="source-dl-btn" href="downloads/klooker-media-image-finder-source.zip" download title="Tải source code Image Finder">
-                <span class="material-symbols-outlined" style="font-size:18px;">folder_zip</span>
-                Tải source
-            </a>
             <button type="button" class="help-btn" onclick="openUsageGuide()" title="Hướng dẫn">
                 <span class="material-symbols-outlined" style="font-size:16px;">map</span>
                 Hướng dẫn
@@ -1560,16 +1584,29 @@
         </div>
     </div>
 
-    <div class="source-banner" id="sourceBanner">
-        <div>
-            <strong>Source code Image Finder</strong>
-            <span>Tải về máy (.zip) — HTML + tìm ảnh/tìm mặt + gemini-proxy. Mật khẩu team đã mở khóa trang này.</span>
+    <section class="kvn-source-panel" id="klookerVnSource" aria-label="Klooker VN Source">
+        <div class="kvn-source-head">
+            <div>
+                <div class="kvn-source-kicker">Klooker VN Source</div>
+                <strong>Worldcup Pickleball Celeb &amp; KOL</strong>
+                <p>Source ảnh Drive nội bộ — hiển thị sau khi đăng nhập Gmail. Bấm thêm vào thư viện để AI học và tìm mặt / tìm ảnh.</p>
+            </div>
+            <div class="kvn-source-actions">
+                <a class="source-dl-btn" id="kvnOpenDrive" href="https://drive.google.com/drive/folders/1dQj5flRmRNF1Hj_6KyCz131MYhsONFie" target="_blank" rel="noopener">
+                    <span class="material-symbols-outlined" style="font-size:18px;">folder_open</span>
+                    Mở trên Drive
+                </a>
+                <button type="button" class="source-dl-btn" id="kvnAddLibrary" style="background:#004ac6;box-shadow:0 4px 14px rgba(0,74,198,.28);">
+                    <span class="material-symbols-outlined" style="font-size:18px;">add_to_photos</span>
+                    Thêm vào thư viện
+                </button>
+            </div>
         </div>
-        <a class="source-dl-btn" href="downloads/klooker-media-image-finder-source.zip" download>
-            <span class="material-symbols-outlined" style="font-size:18px;">download</span>
-            Tải source (.zip)
-        </a>
-    </div>
+        <div class="kvn-source-meta">
+            <span class="material-symbols-outlined" style="font-size:16px;color:#004ac6;">cloud</span>
+            <span id="kvnSourceStatus">Folder Drive: 1dQj5flRmRNF1Hj_6KyCz131MYhsONFie</span>
+        </div>
+    </section>
 
     <div class="search-section">
         <!-- Quick search: filename / keyword -->
@@ -1792,7 +1829,10 @@
     const GOOGLE_API_KEY = 'AIzaSyDnjdN92IRnso3eWRXn_uiu2_qyi97cKeA';
     const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
     const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email openid profile';
-    const APP_VERSION = '2.3.8-folder-full-list';
+    const APP_VERSION = '2.3.12-kvn-source';
+    const KLOOKER_VN_FOLDER_ID = '1dQj5flRmRNF1Hj_6KyCz131MYhsONFie';
+    const KLOOKER_VN_FOLDER_URL = 'https://drive.google.com/drive/folders/' + KLOOKER_VN_FOLDER_ID;
+    const KLOOKER_VN_SOURCE_NAME = 'Klooker VN Source';
     const PICKER_IMAGE_MIMES = 'image/png,image/jpeg,image/jpg,image/gif,image/webp,image/bmp,image/tiff,image/heic,image/heif';
     const AI_PROXY_URL = 'https://gemini-proxy-two-mu.vercel.app/api/gemini';
     const STOP_WORDS = new Set(['tim', 'anh', 'image', 'photo', 'theo', 'trong', 'giup', 'cho', 'tooi', 'can']);
@@ -4314,6 +4354,39 @@
         
         if (currentUser) {
             document.getElementById('userEmail').textContent = currentUser.email || 'Google User';
+        }
+        bindKlookerVnSource();
+    }
+
+    function bindKlookerVnSource() {
+        const openBtn = document.getElementById('kvnOpenDrive');
+        const addBtn = document.getElementById('kvnAddLibrary');
+        const status = document.getElementById('kvnSourceStatus');
+        if (openBtn) openBtn.href = KLOOKER_VN_FOLDER_URL;
+        if (status) status.textContent = KLOOKER_VN_SOURCE_NAME + ' · ' + KLOOKER_VN_FOLDER_URL;
+        if (addBtn && !addBtn.dataset.bound) {
+            addBtn.dataset.bound = '1';
+            addBtn.addEventListener('click', async () => {
+                try {
+                    addBtn.disabled = true;
+                    if (status) status.textContent = 'Đang mở ' + KLOOKER_VN_SOURCE_NAME + '…';
+                    if (typeof openLinkFolderPicker === 'function') {
+                        await openLinkFolderPicker(KLOOKER_VN_FOLDER_ID);
+                    } else {
+                        const input = document.getElementById('driveLinkInput');
+                        if (input) {
+                            input.value = KLOOKER_VN_FOLDER_URL;
+                            input.form?.requestSubmit?.();
+                        }
+                    }
+                    if (status) status.textContent = KLOOKER_VN_SOURCE_NAME + ' đã mở — chọn ảnh / thêm toàn bộ folder.';
+                } catch (err) {
+                    if (status) status.textContent = (err && err.message) || 'Không mở được folder source.';
+                    showToast((err && err.message) || 'Không mở được Klooker VN Source');
+                } finally {
+                    addBtn.disabled = false;
+                }
+            });
         }
     }
 
