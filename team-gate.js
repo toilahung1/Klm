@@ -41,7 +41,7 @@
     var css = document.createElement('style');
     css.id = 'klooker-gate-css';
     css.textContent = [
-      '#klooker-gate{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;',
+      '#klooker-gate{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;visibility:visible!important;opacity:1!important;',
       'background:rgba(8,12,24,.72);backdrop-filter:blur(10px);font-family:Manrope,Inter,system-ui,sans-serif}',
       '#klooker-gate .box{width:min(420px,92vw);background:#fff;border-radius:20px;padding:28px 24px;',
       'box-shadow:0 24px 60px rgba(0,0,0,.28);color:#0f172a}',

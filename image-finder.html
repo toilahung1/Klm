@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-    <meta name="app-version" content="2.3.9-team-gate"/>
+    <meta name="app-version" content="2.3.10-gate-fix"/>
     <title>Klooker Media Image Finder</title>
     <meta name="application-name" content="Klooker Media Image Finder"/>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -1332,15 +1332,18 @@
     </style>
 </head>
 <body class="bg-background text-on-surface">
-<script src="/team-gate.js"></script>
+<script src="team-gate.js"></script>
 <script>
 (function () {
-  document.documentElement.style.visibility = 'hidden';
-  function reveal() { document.documentElement.style.visibility = ''; }
-  if (!window.KlookerGate) { reveal(); return; }
-  KlookerGate.showGate({
-    message: 'Nhập mật khẩu team để dùng Image Finder (tìm ảnh / tìm mặt) và tải source tại /team.html'
-  }).then(reveal).catch(reveal);
+  // Không ẩn cả document — sẽ làm mất luôn overlay mật khẩu (trắng trang).
+  function boot() {
+    if (!window.KlookerGate) return;
+    KlookerGate.showGate({
+      message: 'Nhập mật khẩu team để dùng Image Finder (tìm ảnh / tìm mặt) và tải source tại /team.html'
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 })();
 </script>
 <!-- TopNavBar -->
