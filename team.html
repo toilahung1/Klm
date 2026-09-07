@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+  <title>Klooker Media — Team Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root { --blue:#2563eb; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --bg:#f1f5f9; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:Inter,system-ui,sans-serif; background:var(--bg); color:var(--ink); min-height:100vh; }
+    .wrap { width:min(720px, calc(100% - 32px)); margin:0 auto; padding:48px 0 64px; }
+    h1 { font-family:Manrope,sans-serif; font-size:1.75rem; margin:0 0 8px; }
+    .sub { color:var(--muted); margin:0 0 28px; line-height:1.55; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:18px; padding:22px; margin-bottom:14px; }
+    .card h2 { font-family:Manrope,sans-serif; font-size:1.1rem; margin:0 0 8px; }
+    .card p { margin:0 0 14px; color:var(--muted); font-size:.92rem; line-height:1.5; }
+    .btn {
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      background:var(--blue); color:#fff; text-decoration:none; font-weight:800;
+      padding:12px 18px; border-radius:999px; border:0; cursor:pointer; font:inherit;
+    }
+    .btn.secondary { background:#fff; color:var(--blue); border:1.5px solid var(--line); }
+    .row { display:flex; flex-wrap:wrap; gap:10px; }
+    .steps { margin:0; padding-left:18px; color:var(--muted); font-size:.9rem; }
+    .steps li { margin:6px 0; }
+    .top { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
+    .logout { background:transparent; border:0; color:var(--muted); cursor:pointer; font:inherit; text-decoration:underline; }
+  </style>
+  <script src="/team-gate.js"></script>
+</head>
+<body>
+  <div class="wrap" id="app" hidden>
+    <div class="top">
+      <div>
+        <h1>Klooker Media — Team</h1>
+        <p class="sub">Tải source Image Finder và mở công cụ tìm ảnh / tìm mặt. Folder shoot mẫu trên Drive (Worldcup Pickleball Celeb &amp; KOL) dùng khi đã đăng nhập Gmail trong app.</p>
+      </div>
+      <button type="button" class="logout" id="btnLogout">Đăng xuất</button>
+    </div>
+
+    <div class="card">
+      <h2>1. Tải source</h2>
+      <p>Gói HTML + Image Finder + gemini-proxy (không gồm node_modules). Giải nén rồi mở <code>image-finder.html</code> hoặc deploy như site hiện tại.</p>
+      <a class="btn" href="/downloads/klooker-media-image-finder-source.zip" download>Tải source (.zip)</a>
+    </div>
+
+    <div class="card">
+      <h2>2. Image Finder — tìm ảnh &amp; tìm mặt</h2>
+      <p>Đăng nhập Gmail → Thêm từ Drive (folder shoot) → AI học → tìm theo mô tả hoặc mở folder để tìm mặt.</p>
+      <div class="row">
+        <a class="btn" href="/image-finder.html">Mở Image Finder</a>
+        <a class="btn secondary" href="https://drive.google.com/drive/folders/1dQj5flRmRNF1Hj_6KyCz131MYhsONFie" target="_blank" rel="noopener">Mở folder Drive mẫu</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. Cách tìm mặt nhanh</h2>
+      <ol class="steps">
+        <li>Trong Image Finder: đăng nhập Gmail → <b>Thêm từ Drive</b> → chọn folder shoot (Ctrl/Cmd+A).</li>
+        <li>Đợi AI học nền (thanh dưới).</li>
+        <li>Mở folder trong thư viện → nút <b>Tìm mặt</b> → upload ảnh chân dung hoặc dán link Drive công khai.</li>
+        <li>App so mặt với từng ảnh (kể cả ảnh nhóm).</li>
+      </ol>
+    </div>
+  </div>
+  <script>
+    KlookerGate.showGate({
+      message: 'Nhập mật khẩu team để tải source và dùng Image Finder / tìm mặt.'
+    }).then(function () {
+      document.getElementById('app').hidden = false;
+    });
+    document.getElementById('btnLogout').addEventListener('click', function () {
+      KlookerGate.clearAuthed();
+      location.reload();
+    });
+  </script>
+</body>
+</html>
